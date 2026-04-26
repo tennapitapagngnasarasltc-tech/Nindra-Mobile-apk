@@ -21,7 +21,7 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
   String gender = 'Male';
   int age = 25;
   String occupation = 'Software Engineer';
-  String bmiCategory = 'Normal'; // Default value
+  String bmiCategory = 'Normal';
   double sleepDuration = 7.0;
   int activityLevel = 30;
   int stressLevel = 3;
@@ -75,16 +75,22 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
     setState(() => isLoading = true);
 
     try {
+      // Sign up the user with email and password
       final response = await supabase.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
       if (response.user != null) {
+        // Get the UUID from the authenticated user
+        final String userId = response.user!.id;
+        final String userEmail = response.user!.email ?? emailController.text.trim();
+        
+        // Insert profile with the correct schema
         await supabase.from('profiles').insert({
-          'id': response.user!.id,
+          'user_id': userId,  // Foreign key reference to auth.users
+          'user_email': userEmail,
           'username': usernameController.text.trim(),
-          'email': emailController.text.trim(),
           'gender': gender.toLowerCase(),
           'age': age,
           'occupation': occupation,
@@ -93,6 +99,7 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
           'physical_activity_level': activityLevel,
           'stress_level': stressLevel,
           'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
         });
 
         if (mounted) {
