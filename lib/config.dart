@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   // Network IP for local network access
-  static const String networkIp = 'localhost';
+  static const String networkIp = '192.168.1.6';
   static const String port = '8000';
   // Use the deployed backend on Render (or other host)
   // Toggle this during build using --dart-define=USE_DEPLOYED_BACKEND=true
   static const bool useDeployedBackend = bool.fromEnvironment(
     'USE_DEPLOYED_BACKEND',
-    defaultValue: true,
+    defaultValue: false,
   );
   static const String deployedBaseUrl = 'https://backend-t3db.onrender.com';
 
@@ -39,8 +39,8 @@ class Config {
     // Use defaultTargetPlatform instead of Platform for better cross-platform support
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        // Android emulator needs 10.0.2.2 to reach host machine
-        return 'http://10.0.2.2:$port';
+        // Android device - use network IP
+        return 'http://$networkIp:$port';
       case TargetPlatform.iOS:
         // iOS simulator/device - use network IP
         return 'http://$networkIp:$port';

@@ -3,9 +3,6 @@ import 'package:flutter/services.dart';
 import '../Authentication/signup.dart';
 import 'package:nindra/screens/homescreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../config.dart';
 
 
 class SignInScreen extends StatefulWidget {
@@ -43,22 +40,6 @@ class _SignInScreenState extends State<SignInScreen> {
       );
 
       if (res.user != null && mounted) {
-        final userId = res.user!.id;
-
-        // Trigger prediction via backend API
-        try {
-          final response = await http.post(
-            Uri.parse('${Config.apiBaseUrl}/predict'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'user_id': userId}),
-          );
-          if (response.statusCode != 200) {
-            print('Prediction failed: ${response.body}');
-          }
-        } catch (e) {
-          print('API call error: $e');
-        }
-
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

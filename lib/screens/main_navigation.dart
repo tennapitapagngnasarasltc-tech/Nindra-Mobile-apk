@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:nindra/entertainment.dart';
 import 'package:nindra/screens/homescreen.dart';
+import 'package:nindra/services/api_service.dart';
 import 'package:nindra/screens/profile_screen.dart';
 import 'package:nindra/screens/exercises_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -13,6 +15,7 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
+
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
@@ -23,22 +26,86 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   final List<_NavItem> _navItems = [
-    _NavItem(icon: FontAwesomeIcons.house, activeIcon: FontAwesomeIcons.house, label: 'Home'),
-    _NavItem(icon: FontAwesomeIcons.film, activeIcon: FontAwesomeIcons.film, label: 'Entertainment'),
-    _NavItem(icon: FontAwesomeIcons.personRunning, activeIcon: FontAwesomeIcons.personRunning, label: 'Exercises'),
-    _NavItem(icon: FontAwesomeIcons.user, activeIcon: FontAwesomeIcons.solidUser, label: 'Profile'),
+    _NavItem(
+      icon: FontAwesomeIcons.house,
+      activeIcon: FontAwesomeIcons.house,
+      label: 'Home',
+    ),
+
+    _NavItem(
+      icon: FontAwesomeIcons.film,
+      activeIcon: FontAwesomeIcons.film,
+      label: 'Entertainment',
+    ),
+
+    _NavItem(
+      icon: FontAwesomeIcons.personRunning,
+      activeIcon: FontAwesomeIcons.personRunning,
+      label: 'Exercises',
+    ),
+
+    _NavItem(
+      icon: FontAwesomeIcons.user,
+      activeIcon: FontAwesomeIcons.solidUser,
+      label: 'Profile',
+    ),
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    runAIBackground();
+  }
+
+  /// Automatically runs AI engine after login
+  Future<void> runAIBackground() async {
+
+    try {
+
+      final prefs =
+          await SharedPreferences.getInstance();
+
+      /// Prevent repeated calls
+      final alreadyRan =
+          prefs.getBool("ai_ran") ?? false;
+
+      if (alreadyRan) {
+
+        print("AI already executed");
+
+        return;
+      }
+
+      print("Running AI Engine...");
+
+      await ApiService.runAI();
+
+      await prefs.setBool("ai_ran", true);
+
+      print("AI completed successfully");
+
+    } catch (e) {
+
+      print("AI ERROR: $e");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+
       backgroundColor: const Color(0xFF1A1A2E),
+
       body: Stack(
         children: [
+
           IndexedStack(
             index: _currentIndex,
             children: _screens,
           ),
+
           _buildFloatingNavBar(),
         ],
       ),
@@ -46,22 +113,41 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   Widget _buildFloatingNavBar() {
+
     return Positioned(
+
       bottom: 16,
       left: 0,
       right: 0,
+
       child: Center(
+
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+
+          margin: const EdgeInsets.symmetric(
+            horizontal: 20,
+          ),
+
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 8,
+          ),
+
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E30).withOpacity(0.95),
+
+            color: const Color(0xFF1E1E30)
+                .withOpacity(0.95),
+
             borderRadius: BorderRadius.circular(25),
+
             border: Border.all(
-              color: const Color(0xFFB06EF3).withOpacity(0.3),
+              color: const Color(0xFFB06EF3)
+                  .withOpacity(0.3),
               width: 0.8,
             ),
+
             boxShadow: [
+
               BoxShadow(
                 color: Colors.black.withOpacity(0.3),
                 blurRadius: 10,
@@ -69,8 +155,12 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
             ],
           ),
+
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+
+            mainAxisAlignment:
+                MainAxisAlignment.spaceAround,
+
             children: List.generate(
               _navItems.length,
               (i) => _buildNavItem(i),
@@ -82,29 +172,64 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   Widget _buildNavItem(int index) {
-    final bool isSelected = _currentIndex == index;
+
+    final bool isSelected =
+        _currentIndex == index;
+
     final item = _navItems[index];
 
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+
+      onTap: () {
+
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+
       behavior: HitTestBehavior.opaque,
+
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 4,
+        ),
+
         child: Column(
+
           mainAxisSize: MainAxisSize.min,
+
           children: [
+
             FaIcon(
-              isSelected ? item.activeIcon : item.icon,
+              isSelected
+                  ? item.activeIcon
+                  : item.icon,
+
               size: 18,
-              color: isSelected ? const Color(0xFFB06EF3) : Colors.white54,
+
+              color: isSelected
+                  ? const Color(0xFFB06EF3)
+                  : Colors.white54,
             ),
+
             const SizedBox(height: 2),
+
             Text(
+
               item.label,
+
               style: TextStyle(
-                color: isSelected ? const Color(0xFFB06EF3) : Colors.white38,
+                color: isSelected
+                    ? const Color(0xFFB06EF3)
+                    : Colors.white38,
+
                 fontSize: 9,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+
+                fontWeight: isSelected
+                    ? FontWeight.w600
+                    : FontWeight.w400,
               ),
             ),
           ],
@@ -115,9 +240,11 @@ class _MainNavigationState extends State<MainNavigation> {
 }
 
 class _NavItem {
+
   final IconData icon;
   final IconData activeIcon;
   final String label;
+
   const _NavItem({
     required this.icon,
     required this.activeIcon,

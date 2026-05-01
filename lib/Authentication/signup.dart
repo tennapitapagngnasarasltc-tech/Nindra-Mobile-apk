@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config.dart';
 
 class FullSignUpScreen extends StatefulWidget {
   const FullSignUpScreen({super.key});
@@ -104,22 +101,6 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
             'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
           });
-
-          // Trigger prediction via backend API
-          try {
-            final response = await http.post(
-              Uri.parse('${Config.apiBaseUrl}/predict'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'user_id': userId}),
-            );
-            if (response.statusCode != 200) {
-              // Log or handle, but don't fail signup
-              print('Prediction failed: ${response.body}');
-            }
-          } catch (e) {
-            // Ignore API errors to not break signup
-            print('API call error: $e');
-          }
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -840,6 +821,4 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
       letterSpacing: -0.2,
     );
   }
-
-
 }
