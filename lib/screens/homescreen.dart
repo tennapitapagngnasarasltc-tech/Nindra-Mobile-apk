@@ -1,8 +1,6 @@
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-import 'package:nindra/entertainment.dart';
-import 'package:video_player/video_player.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:nindra/screens/ai_bot_card.dart'; // Import the AI Bot Card
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,438 +10,104 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late VideoPlayerController _videoController;
-  bool _isVideoInitialized = false;
-  bool _isVideoError = false;
-  String _username = 'Friend';
+  final _supabase = Supabase.instance.client;
 
-  // Sample data for statistics
-  int _totalSleepHours = 7;
-  int _sleepGoal = 8;
-  double _sleepQuality = 85; // percentage
-  int _deepSleepHours = 2;
-  int _remSleepHours = 2;
+  String _username = '';
+  bool _isLoading = true;
+  DateTime _selectedDate = DateTime.now();
 
-  // Sample recent activities
-  final List<Map<String, dynamic>> _recentActivities = [
-    {
-      'title': 'Meditation Session',
-      'time': '10:30 PM',
-      'duration': '15 min',
-      'icon': Icons.self_improvement,
-      'color': Colors.purple,
-    },
-    {
-      'title': 'Calming Music',
-      'time': '10:00 PM',
-      'duration': '30 min',
-      'icon': Icons.music_note,
-      'color': Colors.blue,
-    },
-    {
-      'title': 'Sleep Tracking',
-      'time': '11:00 PM',
-      'duration': '7h 30m',
-      'icon': Icons.bedtime,
-      'color': Colors.green,
-    },
-    {
-      'title': 'Breathing Exercise',
-      'time': '09:45 PM',
-      'duration': '10 min',
-      'icon': Icons.air,
-      'color': Colors.orange,
-    },
-  ];
+  // Sleep stats — replace with your actual data source / Supabase fetch
+  final int _totalSleepHours = 7;
+  final int _sleepQualityPercent = 85;
+  final int _deepSleepHours = 7;
+  final int _remSleepHours = 3;
 
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
-    _loadUsername();
+    _fetchUsername();
   }
 
-  Future<void> _loadUsername() async {
-    final auth = Supabase.instance.client.auth;
-    Map<String, dynamic>? user;
-    for (var attempt = 0; attempt < 5; attempt++) {
-      final currentUser = auth.currentUser;
-      final currentSessionUser = auth.currentSession?.user;
-      if (currentUser != null) {
-        user = currentUser.toJson();
-        break;
-      }
-      if (currentSessionUser != null) {
-        user = currentSessionUser.toJson();
-        break;
-      }
-      await Future.delayed(const Duration(milliseconds: 200));
-    }
-
-    final userId = user?['id'] as String?;
-    if (userId == null) return;
-
-    final fallbackName =
-        user?['email']?.toString().split('@').first ?? 'Friend';
-
+  Future<void> _fetchUsername() async {
     try {
-      final response = await Supabase.instance.client
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() {
+          _username = 'User';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final response = await _supabase
           .from('profiles')
           .select('username')
-          .eq('id', userId)
+          .eq('user_id', userId)
           .single();
 
-      final username = response['username'] as String?;
-
-      if (!mounted) return;
       setState(() {
-        _username = username?.isNotEmpty == true ? username! : fallbackName;
+        _username = response['username'] ?? 'User';
+        _isLoading = false;
       });
     } catch (e) {
-      // ignore: avoid_print
-      print('Failed to load username: $e');
-      if (mounted) {
-        setState(() {
-          _username = fallbackName;
-        });
-      }
+      setState(() {
+        _username = 'User';
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _initializeVideo() async {
-    _videoController = VideoPlayerController.asset('assets/background.mp4');
-
-    _videoController.addListener(() {
-      if (_videoController.value.hasError) {
-        setState(() {
-          _isVideoError = true;
-        });
-        print('Video player error: ${_videoController.value.errorDescription}');
-      }
+  void _previousDay() {
+    setState(() {
+      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
     });
-
-    try {
-      await _videoController.initialize();
-      await _videoController.setLooping(true);
-      await _videoController.setVolume(0.0);
-
-      if (mounted) {
-        await _videoController.play();
-        setState(() {
-          _isVideoInitialized = true;
-        });
-        print('Video initialized and playing successfully');
-      }
-    } catch (e) {
-      print('Error initializing video: $e');
-      if (mounted) {
-        setState(() {
-          _isVideoError = true;
-        });
-      }
-    }
   }
 
-  @override
-  void dispose() {
-    _videoController.dispose();
-    super.dispose();
+  void _nextDay() {
+    setState(() {
+      _selectedDate = _selectedDate.add(const Duration(days: 1));
+    });
+  }
+
+  String get _formattedDate {
+    return DateFormat('dd MMM yyyy').format(_selectedDate).toLowerCase();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // Background Video
-          if (_isVideoInitialized && !_isVideoError)
-            SizedBox.expand(child: VideoPlayer(_videoController))
-          else
-            Container(color: Colors.black),
+          // ── Background Image ──────────────────────────────────────────
+          Image.asset(
+            'assets/Home.png', // 🔁 Replace with your image
+            fit: BoxFit.cover,
+          ),
 
-          // Content
+          // ── Dark overlay for readability ──────────────────────────────
+          Container(
+            color: const Color(0xFF1A1A2E).withOpacity(0.75),
+          ),
+
+          // ── Main Content ──────────────────────────────────────────────
           SafeArea(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header Section
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Greeting Section
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Hello,',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white70,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Welcome Back, $_username!',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 10,
-                                      color: Colors.black.withOpacity(0.3),
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Notification Button
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6B1FA0), Color(0xFF9C27B0)],
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.purple.withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                // Navigate to notification page
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const EntertainmentScreen(),
-                                  ),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(30),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                child: Stack(
-                                  children: [
-                                    const Icon(
-                                      Icons.notifications_none,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
+                  _buildTopBar(),
                   const SizedBox(height: 24),
-
-                  // AI Bot Card - ADDED HERE
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: AIBotCard(),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Sleep Statistics Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Sleep Statistics',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                _viewAllStats(context);
-                              },
-                              child: Text(
-                                'View All',
-                                style: TextStyle(
-                                  color: Colors.purple.withOpacity(0.8),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Stats Cards Grid
-                        GridView.count(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          childAspectRatio: 1.3,
-                          children: [
-                            _buildStatCard(
-                              'Total Sleep',
-                              '$_totalSleepHours hrs',
-                              'Goal: $_sleepGoal hrs',
-                              Icons.bedtime,
-                              Colors.purple,
-                            ),
-                            _buildStatCard(
-                              'Sleep Quality',
-                              '$_sleepQuality%',
-                              'Good',
-                              Icons.health_and_safety,
-                              Colors.green,
-                            ),
-                            _buildStatCard(
-                              'Deep Sleep',
-                              '$_deepSleepHours hrs',
-                              '25% of total',
-                              Icons.nightlight,
-                              Colors.blue,
-                            ),
-                            _buildStatCard(
-                              'REM Sleep',
-                              '$_remSleepHours hrs',
-                              'Great!',
-                              Icons.psychology,
-                              Colors.orange,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Recent Activities Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Recent Activities',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Activities List
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _recentActivities.length,
-                          itemBuilder: (context, index) {
-                            final activity = _recentActivities[index];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.1),
-                                ),
-                              ),
-                              child: ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: (activity['color'] as Color)
-                                        .withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    activity['icon'],
-                                    color: activity['color'],
-                                    size: 24,
-                                  ),
-                                ),
-                                title: Text(
-                                  activity['title'],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  activity['time'],
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                trailing: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    activity['duration'],
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
+                  _buildGreeting(),
+                  const SizedBox(height: 36),
+                  _buildSectionLabel('Statistics'),
+                  const SizedBox(height: 14),
+                  _buildStatsGrid(),
+                  const SizedBox(height: 28),
+                  _buildRecommendedHeader(),
+                  const SizedBox(height: 14),
+                  _buildRecommendedActivities(),
                 ],
               ),
             ),
@@ -453,60 +117,198 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    String subtitle,
-    IconData icon,
-    Color color,
-  ) {
+  // ── Top Bar ──────────────────────────────────────────────────────────────
+  Widget _buildTopBar() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Profile avatar
+        CircleAvatar(
+          radius: 26,
+          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+          backgroundImage: AssetImage(
+            'assets/images/profile_avatar.png', // 🔁 Replace with your image
+          ),
+        ),
+
+        // Date navigator
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _previousDay,
+              child: const Icon(Icons.chevron_left, color: Colors.white70, size: 22),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _formattedDate,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _nextDay,
+              child: const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
+            ),
+          ],
+        ),
+
+        // Notification bell
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(255, 250, 250, 250),
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Image.asset(
+            'assets/icon.png', // 🔁 Replace with your custom icon
+            width: 22,
+            height: 22,
+            color: const Color.fromARGB(255, 7, 7, 7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Greeting ─────────────────────────────────────────────────────────────
+  Widget _buildGreeting() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _isLoading
+            ? const SizedBox(
+                height: 36,
+                width: 160,
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.white10,
+                  color: Color(0xFFB06EF3),
+                ),
+              )
+            : RichText(
+                text: TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Hello ',
+                      style: TextStyle(
+                        color: Color(0xFFB06EF3), // purple
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
+                      text: _username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+        const SizedBox(height: 6),
+        const Text(
+          'We Hope you are doing great Today.',
+          style: TextStyle(
+            color: Colors.white60,
+            fontSize: 14,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Section label ─────────────────────────────────────────────────────────
+  Widget _buildSectionLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.3,
+      ),
+    );
+  }
+
+  // ── Stats 2×2 grid ────────────────────────────────────────────────────────
+  Widget _buildStatsGrid() {
+    return Column(
+      children: [
+        // Row 1
+        _buildStatRow(
+          leftLabel: 'Total Sleep Hours\nYesterday',
+          leftValue: '$_totalSleepHours Hours',
+          leftValueColor: const Color(0xFFB06EF3),
+          leftIcon: 'assets/baby-sleep.png', // 🔁 Replace
+          rightLabel: 'Sleep Quality',
+          rightValue: '$_sleepQualityPercent% Good',
+          rightValueColor: const Color(0xFF5DDFB2),
+          rightIcon: 'assets/ico2.png', // 🔁 Replace
+        ),
+        const SizedBox(height: 14),
+        // Row 2
+        _buildStatRow(
+          leftLabel: 'Deep Sleep Hours\nYesterday',
+          leftValue: '$_deepSleepHours Hours',
+          leftValueColor: const Color(0xFFB06EF3),
+          leftIcon: 'assets/dream.png', // 🔁 Replace
+          rightLabel: 'REM Sleep',
+          rightValue: '$_remSleepHours Hours',
+          rightValueColor: const Color(0xFFB06EF3),
+          rightIcon: 'assets/sleep.png', // 🔁 Replace
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatRow({
+    required String leftLabel,
+    required String leftValue,
+    required Color leftValueColor,
+    required String leftIcon,
+    required String rightLabel,
+    required String rightValue,
+    required Color rightValueColor,
+    required String rightIcon,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: const Color(0xFF252535).withOpacity(0.85),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white10),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
+      child: IntrinsicHeight(
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Expanded(
+              child: _buildStatCell(
+                label: leftLabel,
+                value: leftValue,
+                valueColor: leftValueColor,
+                iconPath: leftIcon,
               ),
             ),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.7),
-              ),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: Colors.white12,
+              indent: 16,
+              endIndent: 16,
             ),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.white.withOpacity(0.5),
+            Expanded(
+              child: _buildStatCell(
+                label: rightLabel,
+                value: rightValue,
+                valueColor: rightValueColor,
+                iconPath: rightIcon,
               ),
             ),
           ],
@@ -515,89 +317,134 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showNotificationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A3E),
-          title: const Text(
-            'Notifications',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: const Text(
-            'No new notifications at this moment.\nCheck back later for updates!',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Color(0xFFCE9FFC)),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _viewAllStats(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A3E),
-          title: const Text(
-            'Detailed Statistics',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDetailRow('Average Sleep', '7.2 hours'),
-                const Divider(color: Colors.white24),
-                _buildDetailRow('Best Night', '8.5 hours'),
-                const Divider(color: Colors.white24),
-                _buildDetailRow('Sleep Consistency', '85%'),
-                const Divider(color: Colors.white24),
-                _buildDetailRow('Times Woken Up', '2 times'),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Close',
-                style: TextStyle(color: Color(0xFFCE9FFC)),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildStatCell({
+    required String label,
+    required String value,
+    required Color valueColor,
+    required String iconPath,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Image.asset(
+                iconPath,
+                width: 36,
+                height: 36,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Recommended Activities ────────────────────────────────────────────────
+  Widget _buildRecommendedHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSectionLabel('Recommended Activities'),
+        GestureDetector(
+          onTap: () {
+            // TODO: Navigate to all activities
+          },
+          child: const Text(
+            'See all',
+            style: TextStyle(
+              color: Color(0xFFB06EF3),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendedActivities() {
+    // Placeholder cards — replace with your actual activity data
+    final activities = [
+      {'title': 'Meditation', 'duration': '10 min', 'icon': 'assets/icons/ic_meditation.png'},
+      {'title': 'Light Yoga', 'duration': '20 min', 'icon': 'assets/icons/ic_yoga.png'},
+      {'title': 'Deep Breathing', 'duration': '5 min', 'icon': 'assets/icons/ic_breathing.png'},
+    ];
+
+    return SizedBox(
+      height: 120,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: activities.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final a = activities[index];
+          return Container(
+            width: 130,
+            decoration: BoxDecoration(
+              color: const Color(0xFF252535).withOpacity(0.85),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white10),
+            ),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Image.asset(
+                  a['icon']!, // 🔁 Replace with your custom icon
+                  width: 32,
+                  height: 32,
+                  color: const Color(0xFFB06EF3),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      a['title']!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      a['duration']!,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,4 +1,3 @@
-import 'homescreen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,12 +20,9 @@ class _SplashScreenState extends State<SplashScreen> {
     if (mounted) {
       final currentUser = Supabase.instance.client.auth.currentUser;
       if (currentUser != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+        Navigator.pushReplacementNamed(context, '/home');    // ✅ → MainNavigation (with nav bar)
       } else {
-        Navigator.pushReplacementNamed(context, '/signin');
+        Navigator.pushReplacementNamed(context, '/welcome');  // ✅ → no nav bar
       }
     }
   }
@@ -34,11 +30,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // or your theme color
+      backgroundColor: Colors.white,
       body: Center(
         child: Image.asset(
-          'assets/Transparent.png', // ensure this path is correct
-          width: 200, // adjust size as needed
+          'assets/Transparent.png',
+          width: 200,
           height: 200,
         ),
       ),

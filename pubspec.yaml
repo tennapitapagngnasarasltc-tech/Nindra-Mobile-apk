@@ -18,7 +18,8 @@ dependencies:
   supabase_flutter: ^2.12.4
   curved_navigation_bar: ^1.0.6
   video_player: ^2.8.1
-  font_awesome_flutter: ^11.0.0
+  font_awesome_flutter: ^10.7.0
+  intl: ^0.20.2
 
 
 dev_dependencies:
@@ -32,3 +33,11 @@ flutter:
     - assets/background.mp4
     - assets/signupbg.jpg
     - assets/Transparent.png
+    - assets/home_background.jpg
+    - assets/Home.png
+    - assets/icon.png
+    - assets/baby-sleep.png
+    - assets/ico2.png
+    - assets/dream.png
+    - assets/sleep.png
+    - assets/bgg.mp4

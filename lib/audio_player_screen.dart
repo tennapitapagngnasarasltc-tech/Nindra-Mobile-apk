@@ -248,7 +248,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
       await Supabase.instance.client
           .from('profiles')
           .update({'sleep_duration': durationHours})
-          .eq('id', userId);
+          .eq('user_id', userId);
     } catch (e) {
       // ignore: avoid_print
       print('Failed to update sleep_duration: $e');

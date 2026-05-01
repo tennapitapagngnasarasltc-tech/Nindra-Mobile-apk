@@ -16,10 +16,10 @@ class EntertainmentScreen extends StatefulWidget {
 class _EntertainmentScreenState extends State<EntertainmentScreen>
     with TickerProviderStateMixin {
 
-  // 🌙 Dark Theme Colors
-  static const Color kAccentGreen = Color(0xFF10A98E);
-  static const Color kBackgroundDark = Color(0xFF121212);
-  static const Color kCardDark = Color(0xFF1E1E1E);
+  // 🎨 Theme Colors matching MainNavigation
+  static const Color kAccentPurple = Color(0xFFB06EF3);
+  static const Color kBackgroundDark = Color(0xFF1A1A2E);
+  static const Color kCardDark = Color(0xFF1E1E30);
   static const Color kTextPrimary = Color(0xFFEAEAEA);
   static const Color kTextSecondary = Color(0xFFB0B0B0);
 
@@ -144,7 +144,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(LineIcons.music, color: kAccentGreen),
+                Icon(LineIcons.music, color: kAccentPurple),
                 const SizedBox(width: 8),
                 Text(
                   'Entertainment',
@@ -159,14 +159,14 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.refresh, color: kAccentGreen),
+              icon: Icon(Icons.refresh, color: kAccentPurple),
               onPressed: _loadData,
             ),
           ],
           bottom: TabBar(
             controller: _tabController,
-            indicatorColor: kAccentGreen,
-            labelColor: kAccentGreen,
+            indicatorColor: kAccentPurple,
+            labelColor: kAccentPurple,
             unselectedLabelColor: kTextSecondary,
             tabs: const [
               Tab(text: "All Content"),
@@ -177,7 +177,6 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
         body: Column(
           children: [
-
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -219,9 +218,9 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
               label: Text(category),
               selected: isSelected,
               backgroundColor: kCardDark,
-              selectedColor: kAccentGreen.withOpacity(0.3),
+              selectedColor: kAccentPurple.withOpacity(0.3),
               labelStyle: TextStyle(
-                color: isSelected ? kAccentGreen : kTextSecondary,
+                color: isSelected ? kAccentPurple : kTextSecondary,
               ),
               onSelected: (_) {
                 setState(() => selectedCategory = category);
@@ -235,7 +234,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
   Widget _buildLoadingState() {
     return Center(
-      child: CircularProgressIndicator(color: kAccentGreen),
+      child: CircularProgressIndicator(color: kAccentPurple),
     );
   }
 
@@ -288,9 +287,28 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
                   width: 50,
                   height: 50,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: kAccentPurple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.music_note, color: kAccentPurple),
+                    );
+                  },
                 ),
               )
-            : Icon(Icons.music_note, color: kAccentGreen),
+            : Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: kAccentPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.music_note, color: kAccentPurple),
+              ),
 
         title: Text(
           title,
@@ -299,12 +317,12 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
         subtitle: Text(
           type,
-          style: TextStyle(color: kAccentGreen),
+          style: TextStyle(color: kAccentPurple),
         ),
 
         trailing: Icon(
           Icons.play_circle_fill,
-          color: kAccentGreen,
+          color: kAccentPurple,
           size: 30,
         ),
 

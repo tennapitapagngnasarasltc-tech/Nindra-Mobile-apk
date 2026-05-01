@@ -1,0 +1,37 @@
+# requirements.txt — Python dependencies for Sleep Quality Predictor
+
+# Supabase Python client
+supabase==2.10.0
+
+# Environment variable loader
+python-dotenv==1.0.1
+
+# Groq LLM client
+groq
+
+# HTTP client used internally by supabase-py
+httpx==0.27.2
+
+# Postgrest client (used internally by supabase-py)
+postgrest
+
+# Realtime client (used internally by supabase-py)
+realtime
+
+# Storage client (used internally by supabase-py)
+storage3
+
+# GoTrue auth client (used internally by supabase-py)
+gotrue
+
+# HTTP requests for image fetching
+requests
+
+# FastAPI web framework
+fastapi==0.115.6
+
+# ASGI server
+uvicorn[standard]==0.32.1
+
+# Pydantic for data validation
+pydantic==2.10.3

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config.dart';
 
 class FullSignUpScreen extends StatefulWidget {
   const FullSignUpScreen({super.key});
@@ -81,38 +84,54 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
         password: passwordController.text.trim(),
       );
 
-      if (response.user != null) {
-        // Get the UUID from the authenticated user
-        final String userId = response.user!.id;
-        final String userEmail = response.user!.email ?? emailController.text.trim();
-        
-        // Insert profile with the correct schema
-        await supabase.from('profiles').insert({
-          'user_id': userId,  // Foreign key reference to auth.users
-          'user_email': userEmail,
-          'username': usernameController.text.trim(),
-          'gender': gender.toLowerCase(),
-          'age': age,
-          'occupation': occupation,
-          'bmi_category': bmiCategory,
-          'sleep_duration': sleepDuration,
-          'physical_activity_level': activityLevel,
-          'stress_level': stressLevel,
-          'created_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        });
+        if (response.user != null) {
+          // Get the UUID from the authenticated user
+          final String userId = response.user!.id;
+          final String userEmail = response.user!.email ?? emailController.text.trim();
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created successfully'),
-              backgroundColor: Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          Navigator.pop(context);
+          // Insert profile with the correct schema
+          await supabase.from('profiles').insert({
+            'user_id': userId,  // Foreign key reference to auth.users
+            'user_email': userEmail,
+            'username': usernameController.text.trim(),
+            'gender': gender.toLowerCase(),
+            'age': age,
+            'occupation': occupation,
+            'bmi_category': bmiCategory,
+            'sleep_duration': sleepDuration,
+            'physical_activity_level': activityLevel,
+            'stress_level': stressLevel,
+            'created_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+
+          // Trigger prediction via backend API
+          try {
+            final response = await http.post(
+              Uri.parse('${Config.apiBaseUrl}/predict'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'user_id': userId}),
+            );
+            if (response.statusCode != 200) {
+              // Log or handle, but don't fail signup
+              print('Prediction failed: ${response.body}');
+            }
+          } catch (e) {
+            // Ignore API errors to not break signup
+            print('API call error: $e');
+          }
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account created successfully'),
+                backgroundColor: Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            Navigator.pop(context);
+          }
         }
-      }
     } catch (e) {
       _showError(e.toString().replaceAll('Exception:', ''));
     } finally {
@@ -821,4 +840,6 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
       letterSpacing: -0.2,
     );
   }
+
+
 }

@@ -1,250 +1,126 @@
 import 'package:flutter/material.dart';
 import 'package:nindra/entertainment.dart';
 import 'package:nindra/screens/homescreen.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:nindra/screens/profile_screen.dart';
+import 'package:nindra/screens/exercises_screen.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-
-class MainNavigationBar extends StatefulWidget {
-  const MainNavigationBar({super.key});
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({super.key});
 
   @override
-  State<MainNavigationBar> createState() => _MainNavigationBarState();
+  State<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationBarState extends State<MainNavigationBar> {
+class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    EntertainmentScreen(),
-    ContactsScreen(),
-    ProfileScreen(),
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const EntertainmentScreen(),
+    const ExercisesScreen(),
+    const ProfileScreen(),
   ];
 
-  final List<NavigationItem> _navItems = const [
-    NavigationItem(icon: Icons.music_note, label: 'Music'),
-    NavigationItem(icon: Icons.library_music, label: 'Library'),
-    NavigationItem(icon: Icons.people, label: 'Contacts'),
-    NavigationItem(icon: Icons.person, label: 'Profile'),
+  final List<_NavItem> _navItems = [
+    _NavItem(icon: FontAwesomeIcons.house, activeIcon: FontAwesomeIcons.house, label: 'Home'),
+    _NavItem(icon: FontAwesomeIcons.film, activeIcon: FontAwesomeIcons.film, label: 'Entertainment'),
+    _NavItem(icon: FontAwesomeIcons.personRunning, activeIcon: FontAwesomeIcons.personRunning, label: 'Exercises'),
+    _NavItem(icon: FontAwesomeIcons.user, activeIcon: FontAwesomeIcons.solidUser, label: 'Profile'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF6B1FA0), // Deep Purple
-              Color(0xFF9C27B0), // Purple
+      backgroundColor: const Color(0xFF1A1A2E),
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          _buildFloatingNavBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingNavBar() {
+    return Positioned(
+      bottom: 16,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E30).withOpacity(0.95),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: const Color(0xFFB06EF3).withOpacity(0.3),
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
             ],
           ),
-        ),
-        child: _screens[_currentIndex],
-      ),
-      bottomNavigationBar: CurvedNavigationBar(
-        index: _currentIndex,
-        height: 60.0,
-        backgroundColor: const Color.fromARGB(0, 36, 25, 25),
-        color: Colors.white,
-        buttonBackgroundColor: Colors.white,
-        animationCurve: Curves.easeInOut,
-        animationDuration: const Duration(milliseconds: 400),
-        items: _navItems.map((item) => _buildNavItem(item)).toList(),
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildNavItem(NavigationItem item) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          item.icon,
-          size: 26,
-          color: Colors.deepPurple,
-        ),
-        const SizedBox(height: 2),
-        Text(
-          item.label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-            color: Colors.deepPurple,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(
+              _navItems.length,
+              (i) => _buildNavItem(i),
+            ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index) {
+    final bool isSelected = _currentIndex == index;
+    final item = _navItems[index];
+
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FaIcon(
+              isSelected ? item.activeIcon : item.icon,
+              size: 18,
+              color: isSelected ? const Color(0xFFB06EF3) : Colors.white54,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              item.label,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFFB06EF3) : Colors.white38,
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class NavigationItem {
+class _NavItem {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
-
-  const NavigationItem({
+  const _NavItem({
     required this.icon,
+    required this.activeIcon,
     required this.label,
   });
-}
-
-// Beautiful Music Screen
-class MusicScreen extends StatelessWidget {
-  const MusicScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: _buildGradientAppBar('Music Library'),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.headphones, size: 80, color: Colors.white70),
-            SizedBox(height: 20),
-            Text(
-              'Your Music Collection',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.2,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Discover and play your favorite tracks',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Beautiful Contacts Screen
-class ContactsScreen extends StatelessWidget {
-  const ContactsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: _buildGradientAppBar('Connections'),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_alt, size: 80, color: Colors.white70),
-            SizedBox(height: 20),
-            Text(
-              'Your Network',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.2,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Connect with friends and artists',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Beautiful Profile Screen
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: _buildGradientAppBar('My Profile'),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.person,
-                size: 60,
-                color: Colors.deepPurple,
-              ),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Welcome Back!',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.2,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Manage your account settings',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Reusable Gradient AppBar
-PreferredSizeWidget _buildGradientAppBar(String title) {
-  return AppBar(
-    title: Text(
-      title,
-      style: const TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.5,
-      ),
-    ),
-    centerTitle: true,
-    elevation: 0,
-    backgroundColor: Colors.transparent,
-    flexibleSpace: Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF7B1FA2),
-            Color(0xFF9C27B0),
-          ],
-        ),
-      ),
-    ),
-  );
 }
