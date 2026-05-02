@@ -199,7 +199,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
             });
 
             return AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
+              backgroundColor: const Color(222431),
               title: const Text(
                 "Play Next Audio?",
                 style: TextStyle(color: Colors.white),
@@ -270,7 +270,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E1E1E),
+          backgroundColor: const Color(222431),
           title: const Text(
             "Good Night",
             style: TextStyle(color: Colors.white),
@@ -311,7 +311,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: const Color(222431),
 
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -333,7 +333,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
       ),
 
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          ? const Center(child: CircularProgressIndicator(color: Colors.purple))
           : Column(
               children: [
 
@@ -405,7 +405,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
                         return Column(
                           children: [
                             Slider(
-                              activeColor: Colors.green,
+                              activeColor: Colors.purpleAccent,
                               inactiveColor: Colors.grey,
                               min: 0.0,
                               max: safeMax,
@@ -448,7 +448,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
 
                     IconButton(
                       icon: Icon(Icons.shuffle,
-                          color: _shuffle ? Colors.green : Colors.white),
+                          color: _shuffle ? const Color.fromARGB(255, 127, 76, 175) : Colors.white),
                       onPressed: _toggleShuffle,
                     ),
 
@@ -482,7 +482,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
 
                     IconButton(
                       icon: Icon(Icons.repeat,
-                          color: _repeat ? Colors.green : Colors.white),
+                          color: _repeat ? Colors.purple : Colors.white),
                       onPressed: _toggleRepeat,
                     ),
                   ],
@@ -495,7 +495,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen>
                     Expanded(
                       child: Slider(
                         value: _volume,
-                        activeColor: Colors.green,
+                        activeColor: Colors.purpleAccent,
                         onChanged: _setVolume,
                       ),
                     ),

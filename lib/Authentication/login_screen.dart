@@ -92,7 +92,7 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFF222431),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -131,13 +131,8 @@ class _SignInScreenState extends State<SignInScreen> {
                   _buildDivider(),
                   const SizedBox(height: 16),
                   
-                  // Sign Up Link
-                  _buildSignUpLink(),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Demo Credentials (remove in production)
-                  _buildDemoCredentials(),
+                   // Sign Up Link
+                   _buildSignUpLink(),
                 ],
               ),
             ),
@@ -178,15 +173,15 @@ class _SignInScreenState extends State<SignInScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
+            color: const Color(0xFF252535).withOpacity(0.8),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(
+          child: const Text(
             'Nindra',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.blue.shade700,
+              color: Colors.white,
               letterSpacing: 1.2,
             ),
           ),
@@ -202,14 +197,14 @@ class _SignInScreenState extends State<SignInScreen> {
           'Welcome Back!',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade900,
+                color: Colors.white,
               ),
         ),
         const SizedBox(height: 8),
         Text(
           'Sign in to continue your journey',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade600,
+                color: Colors.white70,
               ),
         ),
       ],
@@ -224,22 +219,24 @@ class _SignInScreenState extends State<SignInScreen> {
       enabled: !isLoading,
       decoration: InputDecoration(
         labelText: 'Email Address',
+        labelStyle: const TextStyle(color: Colors.white70),
         hintText: 'you@example.com',
-        prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade600),
+        hintStyle: const TextStyle(color: Colors.white38),
+        prefixIcon: const Icon(Icons.email_outlined, color: Colors.white70),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Colors.white24),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Colors.white24),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue.shade600, width: 2),
+          borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFF252535).withOpacity(0.8),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
       ),
       validator: (value) {
@@ -261,12 +258,14 @@ class _SignInScreenState extends State<SignInScreen> {
       enabled: !isLoading,
       decoration: InputDecoration(
         labelText: 'Password',
+        labelStyle: const TextStyle(color: Colors.white70),
         hintText: 'Enter your password',
-        prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade600),
+        hintStyle: const TextStyle(color: Colors.white38),
+        prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
         suffixIcon: IconButton(
           icon: Icon(
             obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.grey.shade600,
+            color: Colors.white70,
           ),
           onPressed: () {
             setState(() {
@@ -276,18 +275,18 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Colors.white24),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Colors.white24),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue.shade600, width: 2),
+          borderSide: BorderSide(color: Colors.blue.shade400, width: 2),
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFF252535).withOpacity(0.8),
         contentPadding: const EdgeInsets.symmetric(vertical: 16),
       ),
       validator: (value) {
@@ -318,7 +317,7 @@ class _SignInScreenState extends State<SignInScreen> {
         child: Text(
           'Forgot Password?',
           style: TextStyle(
-            color: Colors.blue.shade600,
+            color: Colors.blue.shade400,
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
@@ -362,25 +361,25 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(
+        const Expanded(
           child: Divider(
-            color: Colors.grey.shade300,
+            color: Colors.white24,
             thickness: 1,
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'OR',
             style: TextStyle(
-              color: Colors.grey.shade500,
+              color: Colors.white54,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        Expanded(
+        const Expanded(
           child: Divider(
-            color: Colors.grey.shade300,
+            color: Colors.white24,
             thickness: 1,
           ),
         ),
@@ -394,7 +393,7 @@ class _SignInScreenState extends State<SignInScreen> {
       children: [
         Text(
           "Don't have an account? ",
-          style: TextStyle(color: Colors.grey.shade600),
+          style: const TextStyle(color: Colors.white70),
         ),
         TextButton(
           onPressed: isLoading
@@ -415,7 +414,7 @@ class _SignInScreenState extends State<SignInScreen> {
           child: Text(
             'Create Account',
             style: TextStyle(
-              color: Colors.blue.shade600,
+              color: Colors.blue.shade400,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -425,56 +424,7 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildDemoCredentials() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Demo Credentials',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildCredentialChip('demo@example.com'),
-              const SizedBox(width: 8),
-              _buildCredentialChip('password123'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildCredentialChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.grey.shade800,
-          fontFamily: 'monospace',
-        ),
-      ),
-    );
-  }
 
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController();

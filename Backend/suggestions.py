@@ -290,30 +290,6 @@ def suggest_for_all_users() -> None:
         print()
 
 
-def run_suggestions(user_id: str):
-    sb = get_supabase_client()
-
-    profile = fetch_profile_by_user_id(sb, user_id)
-
-    suggestions = get_sleep_suggestions(profile)
-
-    parsed = parse_suggestions(suggestions)
-
-    if parsed:
-        suggestions_with_images = [
-            (title, suggestion, get_image_url(title))
-            for title, suggestion in parsed
-        ]
-
-        save_suggestions(
-            sb,
-            user_id,
-            suggestions_with_images
-        )
-
-    return parsed
-
-
 # ──────────────────────────────────────────────
 # Run
 # ──────────────────────────────────────────────

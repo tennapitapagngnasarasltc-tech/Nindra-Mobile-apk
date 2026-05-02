@@ -10,6 +10,8 @@ class FullSignUpScreen extends StatefulWidget {
 
 class _FullSignUpScreenState extends State<FullSignUpScreen> {
   final supabase = Supabase.instance.client;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
 
   // Controllers
   final usernameController = TextEditingController();
@@ -30,33 +32,21 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
 
+  final _page1FormKey = GlobalKey<FormState>();
+  final _page2FormKey = GlobalKey<FormState>();
+
   final occupations = [
-    'Software Engineer',
-    'Product Manager',
-    'Data Scientist',
-    'Marketing Manager',
-    'Sales Director',
-    'Financial Analyst',
-    'Human Resources',
-    'Operations Manager',
-    'Legal Counsel',
-    'Medical Professional',
-    'Educator',
-    'Consultant',
-    'Entrepreneur',
-    'Other'
+    'Software Engineer', 'Product Manager', 'Data Scientist',
+    'Marketing Manager', 'Sales Director', 'Financial Analyst',
+    'Human Resources', 'Operations Manager', 'Legal Counsel',
+    'Medical Professional', 'Educator', 'Consultant', 'Entrepreneur', 'Other'
   ];
 
-  final bmiOptions = [
-    'Normal',
-    'Overweight',
-    'Obese'
-  ];
-
-  final _formKey = GlobalKey<FormState>();
+  final bmiOptions = ['Normal', 'Overweight', 'Obese'];
 
   @override
   void dispose() {
+    _pageController.dispose();
     usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
@@ -64,55 +54,63 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
     super.dispose();
   }
 
-  Future<void> signUp() async {
-    if (!_formKey.currentState!.validate()) return;
+  void _goToPage(int page) {
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOutCubic,
+    );
+    setState(() => _currentPage = page);
+  }
 
-    if (passwordController.text != confirmPasswordController.text) {
-      _showError('Passwords do not match');
-      return;
+  void _handleNext() {
+    if (_page1FormKey.currentState!.validate()) {
+      if (passwordController.text != confirmPasswordController.text) {
+        _showError('Passwords do not match');
+        return;
+      }
+      _goToPage(1);
     }
+  }
 
+  Future<void> _handleSubmit() async {
     setState(() => isLoading = true);
-
     try {
-      // Sign up the user with email and password
       final response = await supabase.auth.signUp(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-        if (response.user != null) {
-          // Get the UUID from the authenticated user
-          final String userId = response.user!.id;
-          final String userEmail = response.user!.email ?? emailController.text.trim();
+      if (response.user != null) {
+        final String userId = response.user!.id;
+        final String userEmail = response.user!.email ?? emailController.text.trim();
 
-          // Insert profile with the correct schema
-          await supabase.from('profiles').insert({
-            'user_id': userId,  // Foreign key reference to auth.users
-            'user_email': userEmail,
-            'username': usernameController.text.trim(),
-            'gender': gender.toLowerCase(),
-            'age': age,
-            'occupation': occupation,
-            'bmi_category': bmiCategory,
-            'sleep_duration': sleepDuration,
-            'physical_activity_level': activityLevel,
-            'stress_level': stressLevel,
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          });
+        await supabase.from('profiles').insert({
+          'user_id': userId,
+          'user_email': userEmail,
+          'username': usernameController.text.trim(),
+          'gender': gender.toLowerCase(),
+          'age': age,
+          'occupation': occupation,
+          'bmi_category': bmiCategory,
+          'sleep_duration': sleepDuration,
+          'physical_activity_level': activityLevel,
+          'stress_level': stressLevel,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
 
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Account created successfully'),
-                backgroundColor: Color(0xFF10B981),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-            Navigator.pop(context);
-          }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created successfully'),
+              backgroundColor: Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context);
         }
+      }
     } catch (e) {
       _showError(e.toString().replaceAll('Exception:', ''));
     } finally {
@@ -134,514 +132,403 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/background.jpg'),
             fit: BoxFit.cover,
           ),
         ),
         child: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              children: [
-                const SizedBox(height: 8),
-                
-                // Glass morphism header
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Welcome',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                          shadows: [
-                            Shadow(
-                              offset: const Offset(0, 2),
-                              blurRadius: 4,
-                              color: Colors.black.withOpacity(0.2),
-                            ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Please complete your profile information',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.white.withOpacity(0.95),
-                          letterSpacing: -0.2,
-                          shadows: [
-                            Shadow(
-                              offset: const Offset(0, 1),
-                              blurRadius: 3,
-                              color: Colors.black.withOpacity(0.1),
-                            ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-
-                // Glass morphism sections
-                _buildGlassSection(
-                  title: 'Account Information',
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildStepDots(),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
                   children: [
-                    TextFormField(
-                      controller: usernameController,
-                      style: const TextStyle(color: Color(0xFF1F2937)),
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: _buildGlassInputDecoration(
-                        label: 'Username',
-                        icon: Icons.person_outline,
-                        hint: 'johndoe',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Username is required';
-                        }
-                        if (value.length < 3) {
-                          return 'Username must be at least 3 characters';
-                        }
-                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                          return 'Use only letters, numbers, and underscores';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      style: const TextStyle(color: Color(0xFF1F2937)),
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: _buildGlassInputDecoration(
-                        label: 'Email address',
-                        icon: Icons.email_outlined,
-                        hint: 'name@company.com',
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Email is required';
-                        }
-                        if (!value.contains('@') || !value.contains('.')) {
-                          return 'Enter a valid email address';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: passwordController,
-                      obscureText: obscurePassword,
-                      style: const TextStyle(color: Color(0xFF1F2937)),
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: _buildGlassInputDecoration(
-                        label: 'Password',
-                        icon: Icons.lock_outline,
-                        hint: '••••••••',
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            size: 20,
-                            color: const Color(0xFF6B7280),
-                          ),
-                          onPressed: () => setState(() => obscurePassword = !obscurePassword),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password is required';
-                        }
-                        if (value.length < 8) {
-                          return 'Password must be at least 8 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: confirmPasswordController,
-                      obscureText: obscureConfirmPassword,
-                      style: const TextStyle(color: Color(0xFF1F2937)),
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: _buildGlassInputDecoration(
-                        label: 'Confirm password',
-                        icon: Icons.lock_outline,
-                        hint: '••••••••',
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                            size: 20,
-                            color: const Color(0xFF6B7280),
-                          ),
-                          onPressed: () => setState(() => obscureConfirmPassword = !obscureConfirmPassword),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-                        return null;
-                      },
-                    ),
+                    _buildPage1(),
+                    _buildPage2(),
                   ],
                 ),
-                
-                const SizedBox(height: 20),
-
-                _buildGlassSection(
-                  title: 'Personal Information',
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Gender',
-                          style: _glassFieldLabelStyle(),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            _buildGlassGenderOption('Male'),
-                            const SizedBox(width: 12),
-                            _buildGlassGenderOption('Female'),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Age', style: _glassFieldLabelStyle()),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Text(
-                                age.toString(),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1F2937),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Slider(
-                          value: age.toDouble(),
-                          min: 18,
-                          max: 100,
-                          divisions: 82,
-                          activeColor: const Color(0xFF3B82F6),
-                          inactiveColor: Colors.white.withOpacity(0.3),
-                          onChanged: (value) => setState(() => age = value.round()),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Occupation', style: _glassFieldLabelStyle()),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                            ),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: occupation,
-                              isExpanded: true,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              hint: const Text('Select occupation'),
-                              icon: Icon(Icons.arrow_drop_down, color: const Color(0xFF6B7280)),
-                              items: occupations.map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
-                              onChanged: (value) => setState(() => occupation = value!),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 20),
-
-                _buildGlassSection(
-                  title: 'BMI Category',
-                  subtitle: 'Select your body mass index category',
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        Row(
-                          children: bmiOptions.map((option) {
-                            final isSelected = bmiCategory == option;
-                            Color optionColor;
-                            switch (option) {
-                              case 'Normal':
-                                optionColor = const Color(0xFF10B981);
-                                break;
-                              case 'Overweight':
-                                optionColor = const Color(0xFFF59E0B);
-                                break;
-                              case 'Obese':
-                                optionColor = const Color(0xFFEF4444);
-                                break;
-                              default:
-                                optionColor = const Color(0xFF3B82F6);
-                            }
-                            
-                            return Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => bmiCategory = option),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: isSelected 
-                                          ? optionColor 
-                                          : Colors.white.withOpacity(0.5),
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: isSelected 
-                                        ? optionColor.withOpacity(0.15)
-                                        : Colors.white.withOpacity(0.5),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        _getBMIcon(option),
-                                        size: 24,
-                                        color: isSelected ? optionColor : Colors.grey.shade600,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        option,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                          color: isSelected ? optionColor : const Color(0xFF374151),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 20),
-
-                _buildGlassSection(
-                  title: 'Wellness Metrics',
-                  subtitle: 'These help us personalize your experience',
-                  children: [
-                    _buildGlassSliderField(
-                      label: 'Sleep duration',
-                      value: sleepDuration,
-                      min: 4,
-                      max: 12,
-                      unit: 'hours',
-                      decimal: true,
-                      onChanged: (value) => setState(() => sleepDuration = value),
-                    ),
-                    _buildGlassSliderField(
-                      label: 'Daily physical activity',
-                      value: activityLevel.toDouble(),
-                      min: 0,
-                      max: 180,
-                      unit: 'minutes',
-                      decimal: false,
-                      onChanged: (value) => setState(() => activityLevel = value.round()),
-                    ),
-                    _buildGlassSliderField(
-                      label: 'Stress level',
-                      value: stressLevel.toDouble(),
-                      min: 1,
-                      max: 10,
-                      unit: 'scale (1-10)',
-                      decimal: false,
-                      onChanged: (value) => setState(() => stressLevel = value.round()),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 28),
-
-                // Glass morphism button
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF3B82F6).withOpacity(0.9),
-                        const Color(0xFF2563EB).withOpacity(0.9),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : signUp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      disabledBackgroundColor: Colors.white.withOpacity(0.3),
-                    ),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text(
-                            'Create account',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-
-                // Glass morphism sign in link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Already have an account?',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                      child: Text(
-                        'Sign in',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          shadows: [
-                            Shadow(
-                              offset: const Offset(0, 1),
-                              blurRadius: 2,
-                              color: Colors.black.withOpacity(0.2),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  IconData _getBMIcon(String category) {
-    switch (category) {
-      case 'Normal':
-        return Icons.favorite;
-      case 'Overweight':
-        return Icons.trending_up;
-      case 'Obese':
-        return Icons.warning;
-      default:
-        return Icons.fitness_center;
-    }
+  // ── Header ──────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    final titles = ['Create Account', 'Health Profile'];
+    final subtitles = ['Set up your login details', 'Personalize your experience'];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: Row(
+          key: ValueKey(_currentPage),
+          children: [
+            if (_currentPage > 0)
+              GestureDetector(
+                onTap: () => _goToPage(0),
+                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+              )
+            else
+              const SizedBox(width: 18),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titles[_currentPage],
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  subtitles[_currentPage],
+                  style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.75)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
+
+  // ── Step Dots ────────────────────────────────────────────────────────────────
+
+  Widget _buildStepDots() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(2, (i) {
+          final isActive = i == _currentPage;
+          final isDone = i < _currentPage;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            margin: const EdgeInsets.symmetric(horizontal: 5),
+            width: isActive ? 28 : 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? Colors.white
+                  : isDone
+                      ? Colors.white.withOpacity(0.7)
+                      : Colors.white.withOpacity(0.35),
+              borderRadius: BorderRadius.circular(5),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ── Page 1: Account + Personal ───────────────────────────────────────────────
+
+  Widget _buildPage1() {
+    return Form(
+      key: _page1FormKey,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: [
+          _buildGlassSection(
+            title: 'Account Information',
+            icon: Icons.lock_person_outlined,
+            children: [
+              _buildTextField(
+                controller: usernameController,
+                label: 'Username',
+                icon: Icons.person_outline,
+                hint: 'johndoe',
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Username is required';
+                  if (v.length < 3) return 'At least 3 characters';
+                  if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v)) return 'Letters, numbers and _ only';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              _buildTextField(
+                controller: emailController,
+                label: 'Email address',
+                icon: Icons.email_outlined,
+                hint: 'name@company.com',
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Email is required';
+                  if (!v.contains('@') || !v.contains('.')) return 'Enter a valid email';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              _buildTextField(
+                controller: passwordController,
+                label: 'Password',
+                icon: Icons.lock_outline,
+                hint: '••••••••',
+                obscure: obscurePassword,
+                suffixIcon: IconButton(
+                  icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      size: 20, color: const Color(0xFF6B7280)),
+                  onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Password is required';
+                  if (v.length < 8) return 'At least 8 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              _buildTextField(
+                controller: confirmPasswordController,
+                label: 'Confirm password',
+                icon: Icons.lock_outline,
+                hint: '••••••••',
+                obscure: obscureConfirmPassword,
+                suffixIcon: IconButton(
+                  icon: Icon(obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                      size: 20, color: const Color(0xFF6B7280)),
+                  onPressed: () => setState(() => obscureConfirmPassword = !obscureConfirmPassword),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Please confirm your password';
+                  return null;
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildGlassSection(
+            title: 'Personal Information',
+            icon: Icons.badge_outlined,
+            children: [
+              _buildFieldLabel('Gender'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildGenderOption('Male'),
+                  const SizedBox(width: 12),
+                  _buildGenderOption('Female'),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _buildSliderRow(
+                label: 'Age',
+                displayText: '$age yrs',
+                value: age.toDouble(),
+                min: 18,
+                max: 100,
+                divisions: 82,
+                onChanged: (v) => setState(() => age = v.round()),
+              ),
+              const SizedBox(height: 10),
+              _buildFieldLabel('Occupation'),
+              const SizedBox(height: 8),
+              _buildDropdown(),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildPrimaryButton(
+            label: 'Continue',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: _handleNext,
+          ),
+          _buildSignInLink(),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ── Page 2: BMI + Wellness ───────────────────────────────────────────────────
+
+  Widget _buildPage2() {
+    return Form(
+      key: _page2FormKey,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: [
+          _buildGlassSection(
+            title: 'BMI Category',
+            icon: Icons.monitor_weight_outlined,
+            subtitle: 'Select your body mass index',
+            children: [
+              const SizedBox(height: 4),
+              Row(
+                children: bmiOptions.map((option) {
+                  final isSelected = bmiCategory == option;
+                  final color = _bmiColor(option);
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => bmiCategory = option),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: isSelected ? color : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                          color: isSelected ? color.withOpacity(0.12) : Colors.white.withOpacity(0.6),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(_bmiIcon(option), size: 26, color: isSelected ? color : Colors.grey.shade500),
+                            const SizedBox(height: 6),
+                            Text(
+                              option,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                                color: isSelected ? color : const Color(0xFF374151),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildGlassSection(
+            title: 'Wellness Metrics',
+            icon: Icons.favorite_border_rounded,
+            subtitle: 'Helps us personalize your insights',
+            children: [
+              _buildSliderRow(
+                label: 'Sleep duration',
+                displayText: '${sleepDuration.toStringAsFixed(1)} hrs',
+                value: sleepDuration,
+                min: 4,
+                max: 12,
+                onChanged: (v) => setState(() => sleepDuration = double.parse(v.toStringAsFixed(1))),
+              ),
+              const SizedBox(height: 12),
+              _buildSliderRow(
+                label: 'Physical activity',
+                displayText: '$activityLevel min',
+                value: activityLevel.toDouble(),
+                min: 0,
+                max: 180,
+                divisions: 180,
+                onChanged: (v) => setState(() => activityLevel = v.round()),
+              ),
+              const SizedBox(height: 12),
+              _buildStressRow(),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildSecondaryButton(
+                label: 'Back',
+                icon: Icons.arrow_back_rounded,
+                onPressed: () => _goToPage(0),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: _buildPrimaryButton(
+                  label: 'Create Account',
+                  onPressed: isLoading ? null : _handleSubmit,
+                  isLoading: isLoading,
+                ),
+              ),
+            ],
+          ),
+          _buildSignInLink(),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ── Stress level selector ────────────────────────────────────────────────────
+
+  Widget _buildStressRow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildFieldLabel('Stress level'),
+            _buildValueBadge(_stressLabel(stressLevel), _stressColor(stressLevel)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: List.generate(10, (i) {
+            final level = i + 1;
+            final isSelected = level == stressLevel;
+            final color = _stressColor(level);
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => stressLevel = level),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isSelected ? color : color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected ? color : Colors.transparent,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$level',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                        color: isSelected ? Colors.white : color,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Relaxed', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+              Text('Critical', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Reusable widgets ─────────────────────────────────────────────────────────
 
   Widget _buildGlassSection({
     required String title,
+    required IconData icon,
     String? subtitle,
     required List<Widget> children,
   }) {
@@ -649,56 +536,103 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.85),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.3),
-          width: 1.5,
-        ),
+        color: Colors.white.withOpacity(0.88),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1F2937),
-              letterSpacing: -0.2,
-            ),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF6B7280),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: const Color(0xFF3B82F6)),
               ),
-            ),
-          ],
-          const SizedBox(height: 20),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F2937), letterSpacing: -0.2)),
+                  if (subtitle != null)
+                    Text(subtitle,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Divider(height: 24, thickness: 0.5),
           ...children,
         ],
       ),
     );
   }
 
-  Widget _buildGlassSliderField({
+  Widget _buildTextField({
+    required TextEditingController controller,
     required String label,
+    required IconData icon,
+    required String hint,
+    TextInputType? keyboardType,
+    bool obscure = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscure,
+      style: const TextStyle(color: Color(0xFF1F2937), fontSize: 14),
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFFD1D5DB)),
+        labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        filled: true,
+        fillColor: Colors.white,
+        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
+        suffixIcon: suffixIcon,
+        contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFEF4444)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliderRow({
+    required String label,
+    required String displayText,
     required double value,
     required double min,
     required double max,
-    required String unit,
-    required bool decimal,
+    int? divisions,
     required Function(double) onChanged,
   }) {
     return Column(
@@ -707,118 +641,225 @@ class _FullSignUpScreenState extends State<FullSignUpScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: _glassFieldLabelStyle()),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                ),
-              ),
-              child: Text(
-                decimal 
-                    ? '${value.toStringAsFixed(1)} $unit'
-                    : '${value.toInt()} $unit',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF1F2937),
-                ),
-              ),
-            ),
+            _buildFieldLabel(label),
+            _buildValueBadge(displayText, const Color(0xFF3B82F6)),
           ],
         ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: decimal ? null : (max - min).toInt(),
-          activeColor: const Color(0xFF3B82F6),
-          inactiveColor: Colors.white.withOpacity(0.3),
-          onChanged: onChanged,
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 4,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+          ),
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            activeColor: const Color(0xFF3B82F6),
+            inactiveColor: const Color(0xFFE5E7EB),
+            onChanged: onChanged,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildGlassGenderOption(String option) {
+  Widget _buildGenderOption(String option) {
     final isSelected = gender == option;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => gender = option),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
             border: Border.all(
-              color: isSelected 
-                  ? const Color(0xFF3B82F6) 
-                  : Colors.white.withOpacity(0.5),
+              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE5E7EB),
               width: isSelected ? 1.5 : 1,
             ),
-            borderRadius: BorderRadius.circular(8),
-            color: isSelected 
-                ? const Color(0xFF3B82F6).withOpacity(0.15)
-                : Colors.white.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(10),
+            color: isSelected ? const Color(0xFF3B82F6).withOpacity(0.08) : Colors.white,
           ),
-          child: Center(
-            child: Text(
-              option,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected 
-                    ? const Color(0xFF3B82F6) 
-                    : const Color(0xFF374151),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                option == 'Male' ? Icons.male : Icons.female,
+                size: 18,
+                color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF9CA3AF),
               ),
-            ),
+              const SizedBox(width: 6),
+              Text(
+                option,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF374151),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  InputDecoration _buildGlassInputDecoration({
-    required String label,
-    required IconData icon,
-    required String hint,
-    Widget? suffixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      floatingLabelBehavior: FloatingLabelBehavior.auto,
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.9),
-      prefixIcon: Icon(icon, size: 20, color: const Color(0xFF6B7280)),
-      suffixIcon: suffixIcon,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+  Widget _buildDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: occupation,
+          isExpanded: true,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6B7280)),
+          style: const TextStyle(color: Color(0xFF1F2937), fontSize: 14),
+          items: occupations.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+          onChanged: (v) => setState(() => occupation = v!),
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFEF4444)),
-      ),
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 0),
     );
   }
 
-  TextStyle _glassFieldLabelStyle() {
-    return const TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: Color(0xFF374151),
-      letterSpacing: -0.2,
+  Widget _buildPrimaryButton({
+    required String label,
+    IconData? icon,
+    VoidCallback? onPressed,
+    bool isLoading = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF3B82F6).withOpacity(0.9),
+            const Color(0xFF2563EB).withOpacity(0.9),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF3B82F6).withOpacity(0.35),
+              blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          disabledBackgroundColor: Colors.white.withOpacity(0.3),
+        ),
+        child: isLoading
+            ? const SizedBox(height: 20, width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(label,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
+                  if (icon != null) ...[
+                    const SizedBox(width: 6),
+                    Icon(icon, size: 18),
+                  ],
+                ],
+              ),
+      ),
     );
+  }
+
+  Widget _buildSecondaryButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18, color: Colors.white),
+        label: Text(label,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white)),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(color: Colors.white.withOpacity(0.6)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignInLink() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('Already have an account?',
+            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6)),
+          child: const Text('Sign in',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFieldLabel(String text) {
+    return Text(text,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+            color: Color(0xFF374151), letterSpacing: -0.1));
+  }
+
+  Widget _buildValueBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Text(text,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  Color _bmiColor(String category) {
+    switch (category) {
+      case 'Normal': return const Color(0xFF10B981);
+      case 'Overweight': return const Color(0xFFF59E0B);
+      case 'Obese': return const Color(0xFFEF4444);
+      default: return const Color(0xFF3B82F6);
+    }
+  }
+
+  IconData _bmiIcon(String category) {
+    switch (category) {
+      case 'Normal': return Icons.favorite_rounded;
+      case 'Overweight': return Icons.trending_up_rounded;
+      case 'Obese': return Icons.warning_amber_rounded;
+      default: return Icons.fitness_center;
+    }
+  }
+
+  Color _stressColor(int level) {
+    if (level <= 3) return const Color(0xFF10B981);
+    if (level <= 6) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  String _stressLabel(int level) {
+    if (level <= 3) return 'Low';
+    if (level <= 6) return 'Moderate';
+    return 'High';
   }
 }

@@ -54,27 +54,46 @@ def build_recommendations(matches: list[dict], max_items: int = 5) -> list[dict]
     return random.sample(matches, min(max_items, len(matches)))
 
 
-def run_recommendations(user_id: str):
+def main() -> None:
+    user_id = input("Enter user_id (UUID): ").strip()
+    if not user_id:
+        print("❌  No user_id provided.")
+        sys.exit(1)
+
     client = get_supabase_client()
 
-    profile = fetch_profile(client, user_id)
+    try:
+        profile = fetch_profile(client, user_id)
+    except Exception as exc:
+        print(f"❌  Failed to fetch profile: {exc}")
+        sys.exit(1)
+
+    sleep_quality = profile.get("sleep_quality")
+    if not sleep_quality:
+        print("⚠️  User profile does not contain sleep_quality. Run the prediction script first to populate this value.")
+        sys.exit(1)
+
+    print(f"🔎  User sleep_quality: {sleep_quality}")
 
     entertainments = fetch_entertainments(client)
+    matches = find_matching_entertainments(profile, entertainments)
 
-    matches = find_matching_entertainments(
-        profile,
-        entertainments
-    )
+    if not matches:
+        print("⚠️  No matching entertainments found for this sleep quality.")
+        sys.exit(0)
 
     recommendations = build_recommendations(matches)
+    print(f"✅  Found {len(matches)} matching items, saving {len(recommendations)} randomly selected recommendations.")
 
-    save_recommendations(
-        client,
-        user_id,
-        recommendations
-    )
+    try:
+        saved = save_recommendations(client, user_id, recommendations)
+        print(f"💾  Saved {len(saved)} recommendations to the recommendations table.")
+    except Exception as exc:
+        print(f"❌  Failed to save recommendations: {exc}")
+        sys.exit(1)
 
-    return recommendations
+    for rec in recommendations:
+        print(f"  - {rec.get('title')} ({rec.get('type')}) — {rec.get('entertainment_sleep_quality')}")
 
 
 if __name__ == "__main__":

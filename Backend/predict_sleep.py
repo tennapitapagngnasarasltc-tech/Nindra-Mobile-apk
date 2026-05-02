@@ -17,16 +17,42 @@ def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def run_prediction(user_id: str):
+def main():
+    user_id = input("Enter user_id (UUID): ").strip()
+    if not user_id:
+        print("❌  No user_id provided.")
+        sys.exit(1)
+
+    print(f"\n🔗  Connecting to Supabase...")
     client = get_supabase_client()
 
-    profile = fetch_profile(client, user_id)
+    print(f"📥  Fetching profile for user_id: {user_id}")
+    try:
+        profile = fetch_profile(client, user_id)
+    except Exception as e:
+        print(f"❌  {e}")
+        sys.exit(1)
 
+    print("\n📋  Profile data retrieved:")
+    for k, v in profile.items():
+        print(f"    {k}: {v}")
+
+    print("\n🧠  Running sleep prediction model...")
     predictions = predict_sleep(profile)
 
-    save_predictions(client, user_id, predictions)
+    print("\n✅  Predictions:")
+    print(f"    Sleep Quality  : {predictions['sleep_quality']}")
+    print(f"    Sleep Percent  : {predictions['sleep_percent']} %")
+    print(f"    Deep Sleep     : {predictions['deep_sleep_pct']} %")
+    print(f"    REM Sleep      : {predictions['rem_sleep_pct']} %")
 
-    return predictions
+    print("\n💾  Saving predictions to Supabase...")
+    try:
+        save_predictions(client, user_id, predictions)
+        print("✅  Predictions stored successfully.")
+    except Exception as e:
+        print(f"❌  Save failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
