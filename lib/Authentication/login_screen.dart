@@ -217,6 +217,7 @@ class _SignInScreenState extends State<SignInScreen> {
       keyboardType: TextInputType.emailAddress,
       textInputAction: TextInputAction.next,
       enabled: !isLoading,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: 'Email Address',
         labelStyle: const TextStyle(color: Colors.white70),
@@ -256,6 +257,7 @@ class _SignInScreenState extends State<SignInScreen> {
       controller: passwordController,
       obscureText: obscurePassword,
       enabled: !isLoading,
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: 'Password',
         labelStyle: const TextStyle(color: Colors.white70),

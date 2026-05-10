@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,11 +13,181 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final supabase = Supabase.instance.client;
-  
+
   // User stats (example data - replace with actual data from your backend)
   int meditationMinutes = 247;
   int sessionsCompleted = 38;
   int streakDays = 12;
+
+  // Profile image
+  File? _selectedImage;
+  String? _profileImageUrl;
+  bool _isUploadingImage = false;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        final response = await supabase
+            .from('profiles')
+            .select('profile_image_url')
+            .eq('user_id', user.id)
+            .single();
+
+        if (mounted) {
+          setState(() {
+            _profileImageUrl = response['profile_image_url'];
+            _isLoadingProfile = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading profile data: $e');
+      if (mounted) {
+        setState(() => _isLoadingProfile = false);
+      }
+    }
+  }
+
+  // Image picker methods
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+        await _uploadImage();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_selectedImage == null) return;
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) throw 'User not authenticated';
+
+      // Create unique filename
+      final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      // Note: Make sure to create 'profile-images' bucket in Supabase Dashboard first
+
+      // Upload to Supabase Storage
+      final fileBytes = await _selectedImage!.readAsBytes();
+      await supabase.storage.from('profile-images').uploadBinary(
+        fileName,
+        fileBytes,
+        fileOptions: const FileOptions(
+          contentType: 'image/jpeg',
+          upsert: true,
+        ),
+      );
+
+      // Get public URL
+      final imageUrl = supabase.storage.from('profile-images').getPublicUrl(fileName);
+
+      // Update profile in database
+      await supabase.from('profiles').update({
+        'profile_image_url': imageUrl,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('user_id', user.id);
+
+      setState(() {
+        _profileImageUrl = imageUrl;
+        _selectedImage = null;
+      });
+
+      // Refresh profile data
+      await _loadProfileData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile image updated successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading image: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isUploadingImage = false);
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E30),
+        title: const Text(
+          'Choose Image Source',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.white70),
+              title: const Text(
+                'Camera',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white70),
+              title: const Text(
+                'Gallery',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFFB06EF3)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,40 +249,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          // Avatar with gradient border
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFB06EF3),
-                  const Color(0xFF9B59B6),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(50),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: Container(
+          // Avatar with gradient border and camera overlay
+          Stack(
+            children: [
+              Container(
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E30),
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFB06EF3),
+                      const Color(0xFF9B59B6),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(50),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: user?.userMetadata?['avatar_url'] != null
-                      ? Image.network(
-                          user!.userMetadata!['avatar_url'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
-                        )
-                      : _buildDefaultAvatar(),
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E30),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(50),
+                      child: _isUploadingImage
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFB06EF3),
+                              ),
+                            )
+                          : _profileImageUrl != null
+                              ? Image.network(
+                                  _profileImageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                                )
+                              : user?.userMetadata?['avatar_url'] != null
+                                  ? Image.network(
+                                      user!.userMetadata!['avatar_url'],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                                    )
+                                  : _selectedImage != null
+                                      ? Image.file(
+                                          _selectedImage!,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : _buildDefaultAvatar(),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              // Camera overlay
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _isUploadingImage ? null : _showImageSourceDialog,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB06EF3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF1E1E30),
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           

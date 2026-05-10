@@ -12,17 +12,28 @@ class Config {
   );
   static const String deployedBaseUrl = 'https://backend-t3db.onrender.com';
 
+  static const String apiUrlOverride = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+
   static String get apiBaseUrl {
-    // Allow quickly switching between local dev and deployed backend.
+    // Explicit override is strongest and useful for physical devices or custom environments.
+    if (apiUrlOverride.isNotEmpty) {
+      return apiUrlOverride;
+    }
+
     if (useDeployedBackend) {
       return deployedBaseUrl;
     }
+
     if (kIsWeb) {
-      // Web platform - try network IP first, fallback to localhost
-      return 'http://$networkIp:$port';
+      // Web platform - use localhost for local backend access.
+      // If you need a different host, override with --dart-define=API_BASE_URL=http://<host>:<port>
+      return 'http://localhost:$port';
     } else {
-      // Mobile platforms - use conditional import for Platform
-      return _getMobileApiUrl();
+      // Mobile platforms - use emulator-friendly localhost by default.
+      return _getMobileLocalhostUrl();
     }
   }
 
@@ -65,5 +76,6 @@ class Config {
   }
 
   static const String supabaseUrl = 'https://uxwyuvqpagdkitxkrtqy.supabase.co';
-  static const String supabaseAnonKey ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d3l1dnFwYWdka2l0eGtydHF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMTY5MDgsImV4cCI6MjA5MjY5MjkwOH0.LgLTLyLjPe77tKKmW9_OJnQMa27YVgkrbKmTK9BwzE8';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4d3l1dnFwYWdka2l0eGtydHF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMTY5MDgsImV4cCI6MjA5MjY5MjkwOH0.LgLTLyLjPe77tKKmW9_OJnQMa27YVgkrbKmTK9BwzE8';
 }

@@ -21,11 +21,11 @@ class UserSuggestion {
   });
 
   factory UserSuggestion.fromMap(Map<String, dynamic> map) => UserSuggestion(
-        id: map['id'] as int,
-        title: map['title'] as String,
-        suggestion: map['suggestion'] as String,
-        createdAt: DateTime.parse(map['created_at'] as String),
-      );
+    id: map['id'] as int,
+    title: map['title'] as String,
+    suggestion: map['suggestion'] as String,
+    createdAt: DateTime.parse(map['created_at'] as String),
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -38,13 +38,18 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
 
   // Profile / stats
   String _username = '';
+  String? _profileImageUrl;
   bool _isLoading = true;
   DateTime _selectedDate = DateTime.now();
+
+  // Latest prediction from profile
+  double? _latestScore;
+  String? _latestScoreBand;
 
   // Real-time subscriptions
   StreamSubscription? _profileSubscription;
@@ -54,12 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
   double? _sleepPercent;
   double? _deepSleepPct;
   double? _remSleepPct;
-  String? _sleepQuality;
+  int? _sleepQuality; // Changed from String to int (1-10 scale)
 
   // Suggestions
   List<UserSuggestion> _suggestions = [];
   bool _suggestionsLoading = true;
   String? _suggestionsError;
+
+
 
   @override
   void initState() {
@@ -92,27 +99,36 @@ class _HomeScreenState extends State<HomeScreen> {
         .from('profiles')
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
-        .listen((List<Map<String, dynamic>> data) {
-      if (data.isNotEmpty && mounted) {
-        final response = data.first;
-        setState(() {
-          _username = response['username'] ?? 'User';
-          _sleepDuration = (response['sleep_duration'] as num?)?.toDouble();
-          _sleepPercent = (response['sleep_percent'] as num?)?.toDouble();
-          _deepSleepPct = (response['deep_sleep_pct'] as num?)?.toDouble();
-          _remSleepPct = (response['rem_sleep_pct'] as num?)?.toDouble();
-          _sleepQuality = response['sleep_quality'] as String?;
-          _isLoading = false;
-        });
-      }
-    }, onError: (error) {
-      if (mounted) {
-        setState(() {
-          _username = 'User';
-          _isLoading = false;
-        });
-      }
-    });
+        .listen(
+          (List<Map<String, dynamic>> data) {
+            if (data.isNotEmpty && mounted) {
+              final response = data.first;
+              setState(() {
+                _username = response['username'] ?? 'User';
+                _profileImageUrl = response['profile_image_url'] as String?;
+                _sleepDuration = (response['sleep_duration'] as num?)
+                    ?.toDouble();
+                _sleepPercent = (response['sleep_percent'] as num?)?.toDouble();
+                _deepSleepPct = (response['deep_sleep_pct'] as num?)
+                    ?.toDouble();
+                _remSleepPct = (response['rem_sleep_pct'] as num?)?.toDouble();
+                _sleepQuality = (response['sleep_quality'] as num?)
+                    ?.toInt(); // Convert to int
+                _latestScore = (response['latest_score'] as num?)?.toDouble();
+                _latestScoreBand = response['score_band'] as String?;
+                _isLoading = false;
+              });
+            }
+          },
+          onError: (error) {
+            if (mounted) {
+              setState(() {
+                _username = 'User';
+                _isLoading = false;
+              });
+            }
+          },
+        );
 
     // Suggestions subscription
     _suggestionsSubscription = _supabase
@@ -120,54 +136,44 @@ class _HomeScreenState extends State<HomeScreen> {
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .order('created_at', ascending: false)
-        .listen((List<Map<String, dynamic>> data) {
-      if (mounted) {
-        setState(() {
-          _suggestions = data.map((e) => UserSuggestion.fromMap(e)).toList();
-          _suggestionsLoading = false;
-        });
-      }
-    }, onError: (error) {
-      if (mounted) {
-        setState(() {
-          _suggestionsError = error.toString();
-          _suggestionsLoading = false;
-        });
-      }
-    });
+        .listen(
+          (List<Map<String, dynamic>> data) {
+            if (mounted) {
+              setState(() {
+                _suggestions = data
+                    .map((e) => UserSuggestion.fromMap(e))
+                    .toList();
+                _suggestionsLoading = false;
+              });
+            }
+          },
+          onError: (error) {
+            if (mounted) {
+              setState(() {
+                _suggestionsError = error.toString();
+                _suggestionsLoading = false;
+              });
+            }
+          },
+        );
   }
 
-
-
-  // ── Date nav ───────────────────────────────────────────────────────────
-  void _previousDay() =>
-      setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
-
-  void _nextDay() =>
-      setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
-
   String get _formattedDate =>
-      DateFormat('dd MMM yyyy').format(_selectedDate).toLowerCase();
+    DateFormat('dd MMM yyyy').format(_selectedDate).toLowerCase();
 
   // ── Helpers ────────────────────────────────────────────────────────────
   String _fmtHours(double? v) =>
       v != null ? '${v.toStringAsFixed(1)} hrs' : '—';
 
-  String _fmtPct(double? v) =>
-      v != null ? '${v.toStringAsFixed(0)}%' : '—';
+  String _fmtPct(double? v) => v != null ? '${v.toStringAsFixed(0)}%' : '—';
 
-  Color _getSleepQualityColor(String? quality) {
-    switch (quality?.toLowerCase()) {
-      case 'good':
-      case 'excellent':
-        return const Color(0xFF5DDFB2); // Green
-      case 'fair':
-        return const Color(0xFFFFD700); // Yellow
-      case 'poor':
-        return const Color(0xFFFF6B6B); // Red
-      default:
-        return const Color(0xFF5DDFB2); // Default green
-    }
+  Color _getSleepQualityColor(int? quality) {
+    if (quality == null) return const Color(0xFF5DDFB2); // Default green
+    if (quality >= 8) return const Color(0xFF5DDFB2); // Excellent - Green
+    if (quality >= 7) return const Color(0xFFB06EF3); // Good - Purple
+    if (quality >= 6) return const Color(0xFFFFD700); // Fair - Yellow
+    if (quality >= 5) return const Color(0xFFFF6B6B); // Poor - Red
+    return const Color(0xFFFF0000); // Critical - Dark Red
   }
 
   // ─────────────────────────────────────────────
@@ -205,6 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+
+
         ],
       ),
     );
@@ -217,50 +225,89 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const CircleAvatar(
-          radius: 26,
-          backgroundColor: Color.fromARGB(255, 69, 19, 99),
-          backgroundImage: AssetImage('assets/images/profile_avatar.png'),
+        GestureDetector(
+          onTap: () {
+            Navigator.pushNamed(context, '/profile');
+          },
+          child: _buildProfileAvatar(),
         ),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: _previousDay,
-              child: const Icon(Icons.chevron_left, color: Colors.white70, size: 22),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              _formattedDate,
-              style: const TextStyle(
-                color: Color.fromARGB(190, 255, 255, 255),
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: _nextDay,
-              child: const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
-            ),
-          ],
-        ),
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(209, 255, 255, 255),
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: Colors.white12),
+        Text(
+          _formattedDate,
+          style: const TextStyle(
+            color: Color.fromARGB(190, 255, 255, 255),
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.3,
           ),
-          child: Image.asset(
-            'assets/icon.png',
-            width: 22,
-            height: 22,
-            color: const Color(0xFF070707),
+        ),
+        GestureDetector(
+          onTap: () {
+            Navigator.pushNamed(context, '/notifications');
+          },
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(209, 255, 255, 255),
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: const Icon(
+              Icons.notifications_outlined,
+              color: Color(0xFF070707),
+              size: 24,
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildProfileAvatar() {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFB06EF3),
+            Color(0xFF9B59B6),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1E30),
+            shape: BoxShape.circle,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(50),
+            child: _profileImageUrl != null
+                ? Image.network(
+                    _profileImageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                  )
+                : _buildDefaultAvatar(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      color: const Color(0xFF2A2A40),
+      child: const Icon(
+        Icons.person,
+        size: 30,
+        color: Color(0xFFB06EF3),
+      ),
     );
   }
 
@@ -305,7 +352,11 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 6),
         const Text(
           'We hope you are doing great today.',
-          style: TextStyle(color: Colors.white60, fontSize: 14, letterSpacing: 0.2),
+          style: TextStyle(
+            color: Colors.white60,
+            fontSize: 14,
+            letterSpacing: 0.2,
+          ),
         ),
       ],
     );
@@ -354,25 +405,56 @@ class _HomeScreenState extends State<HomeScreen> {
           leftLabel: 'Total Sleep\nDuration',
           leftValue: _fmtHours(_sleepDuration),
           leftValueColor: const Color(0xFFB06EF3),
-          leftIcon: 'assets/baby-sleep.png',
+          leftIcon: 'assets/icon1.png',
           rightLabel: 'Sleep Quality',
-          rightValue: '${_sleepQuality ?? '—'} ${_fmtPct(_sleepPercent)}',
+          rightValue:
+              '${_sleepQuality ?? '—'}/10${_sleepPercent != null ? ' (${_sleepPercent!.toStringAsFixed(0)}%)' : ''}',
           rightValueColor: _getSleepQualityColor(_sleepQuality),
-          rightIcon: 'assets/ico2.png',
+          rightIcon: 'assets/icon4.png',
         ),
         const SizedBox(height: 14),
         _buildStatRow(
           leftLabel: 'Deep Sleep',
           leftValue: _fmtPct(_deepSleepPct),
           leftValueColor: const Color(0xFFB06EF3),
-          leftIcon: 'assets/dream.png',
+          leftIcon: 'assets/icon2.png',
           rightLabel: 'REM Sleep',
           rightValue: _fmtPct(_remSleepPct),
           rightValueColor: const Color(0xFFB06EF3),
-          rightIcon: 'assets/sleep.png',
+          rightIcon: 'assets/icon3.png',
+        ),
+        const SizedBox(height: 14),
+        _buildStatRow(
+          leftLabel: 'Sleep Score',
+          leftValue: _latestScore?.toStringAsFixed(1) ?? '—',
+          leftValueColor: const Color(0xFFB06EF3),
+          leftIcon: 'assets/icon4.png',
+          rightLabel: 'Score Band',
+          rightValue: _latestScoreBand ?? '—',
+          rightValueColor: _getScoreBandColor(_latestScoreBand),
+          rightIcon: 'assets/icon6.png',
         ),
       ],
     );
+  }
+
+
+
+  Color _getScoreBandColor(String? band) {
+    switch (band?.toLowerCase()) {
+      case 'excellent':
+        return const Color(0xFF5DDFB2);
+      case 'good':
+        return const Color(0xFFB06EF3);
+      case 'fair':
+        return const Color(0xFFFFD700);
+      case 'poor':
+        return const Color(0xFFFF6B6B);
+      case 'critical':
+        return const Color(0xFFFF0000);
+      default:
+        return const Color(0xFF5DDFB2);
+    }
   }
 
   Widget _buildStatRow({
@@ -449,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 6),
-              Image.asset(iconPath, width: 36, height: 36),
+               Image.asset(iconPath, width: 48, height: 48),
             ],
           ),
           const SizedBox(height: 10),
@@ -496,9 +578,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_suggestionsLoading) return const _SuggestionsLoadingState();
 
     if (_suggestionsError != null) {
-      return _SuggestionsErrorState(
-        error: _suggestionsError!,
-      );
+      return _SuggestionsErrorState(error: _suggestionsError!);
     }
 
     if (_suggestions.isEmpty) return const _SuggestionsEmptyState();
@@ -633,15 +713,24 @@ class _SuggestionDetailSheet extends StatelessWidget {
       context: ctx,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) =>
-          _SuggestionDetailSheet(suggestion: s, accent: accent),
+      builder: (_) => _SuggestionDetailSheet(suggestion: s, accent: accent),
     );
   }
 
   String _formatDate(DateTime dt) {
     const m = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${m[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
@@ -786,25 +875,45 @@ class _IconPainter extends CustomPainter {
   void _drawLeaf(Canvas c, Size s, Paint fill, Paint stroke) {
     final path = Path()
       ..moveTo(s.width * 0.5, s.height * 0.1)
-      ..cubicTo(s.width * 0.9, s.height * 0.1, s.width * 0.9, s.height * 0.9,
-          s.width * 0.5, s.height * 0.9)
-      ..cubicTo(s.width * 0.1, s.height * 0.9, s.width * 0.1, s.height * 0.1,
-          s.width * 0.5, s.height * 0.1)
+      ..cubicTo(
+        s.width * 0.9,
+        s.height * 0.1,
+        s.width * 0.9,
+        s.height * 0.9,
+        s.width * 0.5,
+        s.height * 0.9,
+      )
+      ..cubicTo(
+        s.width * 0.1,
+        s.height * 0.9,
+        s.width * 0.1,
+        s.height * 0.1,
+        s.width * 0.5,
+        s.height * 0.1,
+      )
       ..close();
     c.drawPath(path, fill..color = color.withOpacity(0.3));
     c.drawPath(path, stroke);
-    c.drawLine(Offset(s.width * 0.5, s.height * 0.15),
-        Offset(s.width * 0.5, s.height * 0.85), stroke);
+    c.drawLine(
+      Offset(s.width * 0.5, s.height * 0.15),
+      Offset(s.width * 0.5, s.height * 0.85),
+      stroke,
+    );
   }
 
   void _drawWave(Canvas c, Size s, Paint stroke) {
     for (int i = 0; i < 3; i++) {
       final yBase = s.height * (0.3 + i * 0.2);
       final path = Path()..moveTo(0, yBase);
-      path.cubicTo(s.width * 0.25, yBase - 4, s.width * 0.5, yBase + 4,
-          s.width * 0.75, yBase - 4);
       path.cubicTo(
-          s.width * 0.875, yBase - 8, s.width, yBase, s.width, yBase);
+        s.width * 0.25,
+        yBase - 4,
+        s.width * 0.5,
+        yBase + 4,
+        s.width * 0.75,
+        yBase - 4,
+      );
+      path.cubicTo(s.width * 0.875, yBase - 8, s.width, yBase, s.width, yBase);
       c.drawPath(path, stroke..strokeWidth = 1.8 - i * 0.3);
     }
   }
@@ -827,13 +936,19 @@ class _IconPainter extends CustomPainter {
 
   void _drawMoon(Canvas c, Size s, Paint fill) {
     final outer = Path()
-      ..addOval(Rect.fromCircle(
+      ..addOval(
+        Rect.fromCircle(
           center: Offset(s.width * 0.5, s.height * 0.5),
-          radius: s.width * 0.42));
+          radius: s.width * 0.42,
+        ),
+      );
     final cut = Path()
-      ..addOval(Rect.fromCircle(
+      ..addOval(
+        Rect.fromCircle(
           center: Offset(s.width * 0.65, s.height * 0.38),
-          radius: s.width * 0.35));
+          radius: s.width * 0.35,
+        ),
+      );
     c.drawPath(Path.combine(PathOperation.difference, outer, cut), fill);
   }
 
@@ -880,7 +995,10 @@ class _SuggestionsErrorState extends StatelessWidget {
         children: [
           Text(
             'Could not load suggestions',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 8),
           TextButton(
@@ -912,8 +1030,7 @@ class _SuggestionsEmptyState extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Text(
           'No suggestions yet — check back soon!',
-          style: TextStyle(
-              color: Colors.white.withOpacity(0.4), fontSize: 13),
+          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
         ),
       ),
     );
