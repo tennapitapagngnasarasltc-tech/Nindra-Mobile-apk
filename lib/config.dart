@@ -10,7 +10,13 @@ class Config {
     'USE_DEPLOYED_BACKEND',
     defaultValue: false,
   );
-  static const String deployedBaseUrl = 'https://backend-t3db.onrender.com';
+  static const String deployedBaseUrl = 'https://backend-o5fa.onrender.com';
+
+  // Runtime fallback flag (set automatically when local backend unreachable)
+  static bool _useRenderFallback = false;
+
+  static void enableRenderFallback() => _useRenderFallback = true;
+  static bool get isUsingRenderFallback => _useRenderFallback;
 
   static const String apiUrlOverride = String.fromEnvironment(
     'API_BASE_URL',
@@ -18,23 +24,11 @@ class Config {
   );
 
   static String get apiBaseUrl {
-    // Explicit override is strongest and useful for physical devices or custom environments.
-    if (apiUrlOverride.isNotEmpty) {
-      return apiUrlOverride;
-    }
+    if (apiUrlOverride.isNotEmpty) return apiUrlOverride;
+    if (useDeployedBackend || _useRenderFallback) return deployedBaseUrl;
 
-    if (useDeployedBackend) {
-      return deployedBaseUrl;
-    }
-
-    if (kIsWeb) {
-      // Web platform - use localhost for local backend access.
-      // If you need a different host, override with --dart-define=API_BASE_URL=http://<host>:<port>
-      return 'http://localhost:$port';
-    } else {
-      // Mobile platforms - use emulator-friendly localhost by default.
-      return _getMobileLocalhostUrl();
-    }
+    if (kIsWeb) return 'http://localhost:$port';
+    return _getMobileLocalhostUrl();
   }
 
   // Alternative localhost URL for development

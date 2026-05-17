@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:nindra/config.dart';
 import 'package:nindra/services/api_service.dart';
 
 class ConnectionTest {
@@ -22,15 +23,21 @@ class ConnectionTest {
         print('   Response: ${response.body}');
       }
     } catch (e) {
-      print('   ❌ Cannot reach backend');
+      print('   ❌ Local backend unreachable');
       print('   Error: $e');
-      print('   \n   💡 Troubleshooting:');
-      print(
-        '      • Is backend running? (python -m uvicorn app.main:app --reload)',
-      );
-      print('      • Is firewall blocking port 8000?');
-      print('      • Check IP in lib/config.dart matches your machine');
-      print('      • Check network connection');
+      print('   → Switching to Render backend: https://backend-o5fa.onrender.com');
+      Config.enableRenderFallback();
+      // Retry once with Render
+      try {
+        final response = await http
+            .get(Uri.parse('${ApiService.baseUrl}/'))
+            .timeout(Duration(seconds: 8));
+        if (response.statusCode == 200) {
+          print('   ✅ Render backend reachable');
+          return;
+        }
+      } catch (_) {}
+      print('   ❌ Render backend also unreachable. Check internet or deployed URL.');
       return;
     }
 
