@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:nindra/config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:nindra/services/api_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:nindra/config.dart';
 
 class SleepPredictionFormScreen extends StatefulWidget {
   const SleepPredictionFormScreen({super.key});
@@ -151,6 +152,7 @@ class _SleepPredictionFormScreenState extends State<SleepPredictionFormScreen> {
 
         // Push latest prediction fields to Supabase profile as well.
         await _updateProfilePredictionFields(result);
+        ApiService.notifyPredictionCompleted();
 
         if (mounted) {
           Navigator.pushNamed(context, '/result', arguments: result);
@@ -207,9 +209,7 @@ class _SleepPredictionFormScreenState extends State<SleepPredictionFormScreen> {
             Navigator.of(context).pop();
           },
         ),
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading
           ? const Center(
@@ -430,3 +430,4 @@ class _SleepPredictionFormScreenState extends State<SleepPredictionFormScreen> {
     );
   }
 }
+

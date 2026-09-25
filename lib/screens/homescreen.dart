@@ -2,31 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:nindra/services/api_service.dart';
+import 'package:nindra/models/user_suggestion.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-// ─────────────────────────────────────────────
-// DATA MODEL
-// ─────────────────────────────────────────────
-class UserSuggestion {
-  final int id;
-  final String title;
-  final String suggestion;
-  final DateTime createdAt;
-
-  const UserSuggestion({
-    required this.id,
-    required this.title,
-    required this.suggestion,
-    required this.createdAt,
-  });
-
-  factory UserSuggestion.fromMap(Map<String, dynamic> map) => UserSuggestion(
-    id: map['id'] as int,
-    title: map['title'] as String,
-    suggestion: map['suggestion'] as String,
-    createdAt: DateTime.parse(map['created_at'] as String),
-  );
-}
+import 'package:nindra/screens/suggestions_screen.dart';
 
 // ─────────────────────────────────────────────
 // HOME SCREEN
@@ -38,7 +17,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final _supabase = Supabase.instance.client;
 
   // Profile / stats
@@ -53,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // Real-time subscriptions
   StreamSubscription? _profileSubscription;
-  StreamSubscription? _suggestionsSubscription;
+  StreamSubscription<void>? _predictionSubscription;
 
   double? _sleepDuration;
   double? _sleepPercent;
@@ -65,19 +45,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<UserSuggestion> _suggestions = [];
   bool _suggestionsLoading = true;
   String? _suggestionsError;
-
-
+  String _suggestionsStatus = 'loading';
+  String? _suggestionsMessage;
 
   @override
   void initState() {
     super.initState();
+    _predictionSubscription = ApiService.predictionCompleted.listen((_) {
+      _loadSuggestions();
+    });
     _setupRealTimeSubscriptions();
   }
 
   @override
   void dispose() {
     _profileSubscription?.cancel();
-    _suggestionsSubscription?.cancel();
+    _predictionSubscription?.cancel();
     super.dispose();
   }
 
@@ -89,7 +72,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _username = 'User';
         _isLoading = false;
         _suggestionsLoading = false;
-        _suggestionsError = 'Not authenticated';
+        _suggestionsStatus = 'error';
+        _suggestionsError = 'Authentication is required to load suggestions.';
       });
       return;
     }
@@ -130,36 +114,46 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           },
         );
 
-    // Suggestions subscription
-    _suggestionsSubscription = _supabase
-        .from('user_suggestions')
-        .stream(primaryKey: ['id'])
-        .eq('user_id', userId)
-        .order('created_at', ascending: false)
-        .listen(
-          (List<Map<String, dynamic>> data) {
-            if (mounted) {
-              setState(() {
-                _suggestions = data
-                    .map((e) => UserSuggestion.fromMap(e))
-                    .toList();
-                _suggestionsLoading = false;
-              });
-            }
-          },
-          onError: (error) {
-            if (mounted) {
-              setState(() {
-                _suggestionsError = error.toString();
-                _suggestionsLoading = false;
-              });
-            }
-          },
-        );
+    _loadSuggestions();
+  }
+
+  Future<void> _loadSuggestions() async {
+    if (!mounted) return;
+    setState(() {
+      _suggestionsLoading = true;
+      _suggestionsError = null;
+      _suggestionsStatus = 'loading';
+    });
+
+    try {
+      final response = await ApiService.getUserSuggestions(limit: 3);
+      if (!mounted) return;
+      final rows = response['suggestions'] as List? ?? const [];
+      setState(() {
+        _suggestions = rows
+            .map(
+              (row) =>
+                  UserSuggestion.fromMap(Map<String, dynamic>.from(row as Map)),
+            )
+            .toList();
+        _latestScoreBand =
+            response['score_band'] as String? ?? _latestScoreBand;
+        _suggestionsStatus = response['status'] as String? ?? 'ok';
+        _suggestionsMessage = response['message'] as String?;
+        _suggestionsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _suggestionsError = error.toString();
+        _suggestionsStatus = 'error';
+        _suggestionsLoading = false;
+      });
+    }
   }
 
   String get _formattedDate =>
-    DateFormat('dd MMM yyyy').format(_selectedDate).toLowerCase();
+      DateFormat('dd MMM yyyy').format(_selectedDate).toLowerCase();
 
   // ── Helpers ────────────────────────────────────────────────────────────
   String _fmtHours(double? v) =>
@@ -211,8 +205,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
-
-
         ],
       ),
     );
@@ -270,10 +262,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFB06EF3),
-            Color(0xFF9B59B6),
-          ],
+          colors: [Color(0xFFB06EF3), Color(0xFF9B59B6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -303,11 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildDefaultAvatar() {
     return Container(
       color: const Color(0xFF2A2A40),
-      child: const Icon(
-        Icons.person,
-        size: 30,
-        color: Color(0xFFB06EF3),
-      ),
+      child: const Icon(Icons.person, size: 30, color: Color(0xFFB06EF3)),
     );
   }
 
@@ -438,8 +423,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-
-
   Color _getScoreBandColor(String? band) {
     switch (band?.toLowerCase()) {
       case 'excellent':
@@ -531,7 +514,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 ),
               ),
               const SizedBox(width: 6),
-               Image.asset(iconPath, width: 48, height: 48),
+              Image.asset(iconPath, width: 48, height: 48),
             ],
           ),
           const SizedBox(height: 10),
@@ -557,7 +540,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       children: [
         _buildSectionLabel('Recommended for You'),
         GestureDetector(
-          onTap: () {}, // TODO: navigate to all
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SuggestionsScreen()),
+          ),
           child: const Text(
             'See all',
             style: TextStyle(
@@ -577,11 +563,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildRecommendedActivities() {
     if (_suggestionsLoading) return const _SuggestionsLoadingState();
 
-    if (_suggestionsError != null) {
-      return _SuggestionsErrorState(error: _suggestionsError!);
+    if (_suggestionsStatus == 'error') {
+      return _SuggestionsErrorState(
+        error: _suggestionsError ?? 'Please try again.',
+        onRetry: _loadSuggestions,
+      );
     }
 
-    if (_suggestions.isEmpty) return const _SuggestionsEmptyState();
+    if (_suggestionsStatus == 'no_prediction') {
+      return _SuggestionsNoPredictionState(
+        message:
+            _suggestionsMessage ??
+            'Create a sleep prediction to get suggestions.',
+      );
+    }
+    if (_suggestionsStatus == 'no_score_band') {
+      return _SuggestionsNoScoreBandState(
+        message:
+            _suggestionsMessage ?? 'Your latest prediction has no score band.',
+      );
+    }
+    if (_suggestionsStatus == 'no_matching_suggestions' ||
+        _suggestions.isEmpty) {
+      return _SuggestionsNoMatchesState(
+        message:
+            _suggestionsMessage ??
+            'No suggestions match your latest score band.',
+      );
+    }
 
     return ListView.separated(
       shrinkWrap: true,
@@ -670,7 +679,7 @@ class _SuggestionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    suggestion.suggestion,
+                    suggestion.suggestionNote,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -715,24 +724,6 @@ class _SuggestionDetailSheet extends StatelessWidget {
       isScrollControlled: true,
       builder: (_) => _SuggestionDetailSheet(suggestion: s, accent: accent),
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    const m = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${m[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 
   @override
@@ -789,7 +780,7 @@ class _SuggestionDetailSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    _formatDate(suggestion.createdAt),
+                    'Sleep quality: ${suggestion.scoreBand}',
                     style: TextStyle(
                       color: accent.withOpacity(0.7),
                       fontSize: 12,
@@ -800,7 +791,7 @@ class _SuggestionDetailSheet extends StatelessWidget {
                   Divider(color: Colors.white.withOpacity(0.08)),
                   const SizedBox(height: 20),
                   Text(
-                    suggestion.suggestion,
+                    suggestion.suggestionNote,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.82),
                       fontSize: 15,
@@ -985,8 +976,9 @@ class _SuggestionsLoadingState extends StatelessWidget {
 
 class _SuggestionsErrorState extends StatelessWidget {
   final String error;
+  final VoidCallback onRetry;
 
-  const _SuggestionsErrorState({required this.error});
+  const _SuggestionsErrorState({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -1000,15 +992,18 @@ class _SuggestionsErrorState extends StatelessWidget {
               fontSize: 13,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            error,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 11,
+            ),
+          ),
           const SizedBox(height: 8),
           TextButton(
-            onPressed: () {
-              // Restart subscriptions
-              final state = context.findAncestorStateOfType<_HomeScreenState>();
-              state?._profileSubscription?.cancel();
-              state?._suggestionsSubscription?.cancel();
-              state?._setupRealTimeSubscriptions();
-            },
+            onPressed: onRetry,
             child: const Text(
               'Retry',
               style: TextStyle(color: Color(0xFFB06EF3)),
@@ -1020,8 +1015,10 @@ class _SuggestionsErrorState extends StatelessWidget {
   }
 }
 
-class _SuggestionsEmptyState extends StatelessWidget {
-  const _SuggestionsEmptyState();
+class _SuggestionsNoPredictionState extends StatelessWidget {
+  final String message;
+
+  const _SuggestionsNoPredictionState({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -1029,10 +1026,44 @@ class _SuggestionsEmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Text(
-          'No suggestions yet — check back soon!',
+          message,
           style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+          textAlign: TextAlign.center,
         ),
       ),
     );
   }
 }
+
+class _SuggestionsNoScoreBandState extends StatelessWidget {
+  final String message;
+
+  const _SuggestionsNoScoreBandState({required this.message});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Text(
+      message,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+    ),
+  );
+}
+
+class _SuggestionsNoMatchesState extends StatelessWidget {
+  final String message;
+
+  const _SuggestionsNoMatchesState({required this.message});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Text(
+      message,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+    ),
+  );
+}
+

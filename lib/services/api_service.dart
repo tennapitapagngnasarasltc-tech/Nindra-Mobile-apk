@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:nindra/config.dart';
 import 'package:http/http.dart' as http;
@@ -111,6 +112,12 @@ class SleepPredictionResponse {
 // ──────────────────────────────────────────────
 class ApiService {
   static String get baseUrl => Config.apiBaseUrl;
+  static final StreamController<void> _predictionCompleted =
+      StreamController<void>.broadcast();
+
+  static Stream<void> get predictionCompleted => _predictionCompleted.stream;
+
+  static void notifyPredictionCompleted() => _predictionCompleted.add(null);
 
   /// Get auth token from Supabase session
   static Future<String?> getAuthToken() async {
@@ -219,6 +226,29 @@ class ApiService {
       print('❌ Failed to get For You recommendations: $e');
       return null;
     }
+  }
+
+  /// Fetch a page of suggestions for the authenticated user's latest score band.
+  static Future<Map<String, dynamic>> getUserSuggestions({
+    int limit = 3,
+    int offset = 0,
+    String? expectedScoreBand,
+  }) async {
+    final headers = await _getHeaders();
+    final queryParameters = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      if (expectedScoreBand != null && expectedScoreBand.isNotEmpty)
+        'expected_score_band': expectedScoreBand,
+    };
+    final uri = Uri.parse(
+      '$baseUrl/suggestions',
+    ).replace(queryParameters: queryParameters);
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Suggestions request failed (${response.statusCode}).');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   /// Legacy method for background AI execution.
