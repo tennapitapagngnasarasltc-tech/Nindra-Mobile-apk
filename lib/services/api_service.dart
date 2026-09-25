@@ -201,6 +201,26 @@ class ApiService {
     }
   }
 
+  /// Get active entertainment matched to the authenticated user's latest score band.
+  static Future<Map<String, dynamic>?> getForYouRecommendations() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/entertainment/for-you'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      print('❌ Failed to get For You recommendations: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('❌ Failed to get For You recommendations: $e');
+      return null;
+    }
+  }
+
   /// Legacy method for background AI execution.
   ///
   /// This method is intentionally disabled because /predict requires valid user data.
@@ -211,3 +231,4 @@ class ApiService {
     );
   }
 }
+

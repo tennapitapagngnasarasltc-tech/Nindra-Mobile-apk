@@ -1,8 +1,7 @@
-import '../config.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:line_icons/line_icons.dart';
 import 'package:nindra/audio_player_screen.dart';
+import 'package:nindra/services/api_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EntertainmentScreen extends StatefulWidget {
@@ -15,8 +14,6 @@ class EntertainmentScreen extends StatefulWidget {
 
 class _EntertainmentScreenState extends State<EntertainmentScreen>
     with TickerProviderStateMixin {
-
-  // 🎨 Theme Colors matching MainNavigation
   static const Color kAccentPurple = Color(0xFFB06EF3);
   static const Color kBackgroundDark = Color(0xFF1A1A2E);
   static const Color kCardDark = Color(0xFF1E1E30);
@@ -87,33 +84,24 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
 
   Future<void> fetchRecommendedEntertainmentContent() async {
     try {
-      try {
-        final baseUrl = Config.apiBaseUrl;
-        final apiUrl = '$baseUrl/recommend_entertainment/api/suggestions/1';
-
-        await http.get(Uri.parse(apiUrl));
-        await Future.delayed(const Duration(seconds: 1));
-      } catch (_) {}
-
-      final response = await Supabase.instance.client
-          .from('recommended_entertainments')
-          .select('entertainments(*), recommended_at');
-
-      final items = response.map<Map<String, dynamic>>((item) {
-        final entertainment = item['entertainments'];
-        return {...entertainment, 'recommended_at': item['recommended_at']};
-      }).toList();
+      final response = await ApiService.getForYouRecommendations();
+      if (response == null) {
+        throw Exception('Unable to load recommendations. Please try again.');
+      }
+      final items = List<Map<String, dynamic>>.from(
+        response['recommendations'] as List? ?? [],
+      );
 
       setState(() {
         entertainmentItems = items;
         isLoading = false;
         errorMessage = items.isEmpty
-            ? 'No recommendations yet'
+            ? response['message'] as String? ?? 'No recommendations yet.'
             : '';
       });
     } catch (e) {
       setState(() {
-        errorMessage = "Error loading recommendations: $e";
+        errorMessage = 'Error loading recommendations: $e';
         isLoading = false;
       });
     }
@@ -196,8 +184,8 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
               child: isLoading
                   ? _buildLoadingState()
                   : errorMessage.isNotEmpty
-                      ? _buildErrorState()
-                      : _buildContentList(),
+                  ? _buildErrorState()
+                  : _buildContentList(),
             ),
           ],
         ),
@@ -233,9 +221,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
   }
 
   Widget _buildLoadingState() {
-    return Center(
-      child: CircularProgressIndicator(color: kAccentPurple),
-    );
+    return Center(child: CircularProgressIndicator(color: kAccentPurple));
   }
 
   Widget _buildErrorState() {
@@ -275,9 +261,7 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
     return Card(
       color: kCardDark,
       margin: const EdgeInsets.all(8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: coverImgUrl != null
             ? ClipRRect(
@@ -310,21 +294,11 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
                 child: Icon(Icons.music_note, color: kAccentPurple),
               ),
 
-        title: Text(
-          title,
-          style: TextStyle(color: kTextPrimary),
-        ),
+        title: Text(title, style: TextStyle(color: kTextPrimary)),
 
-        subtitle: Text(
-          type,
-          style: TextStyle(color: kAccentPurple),
-        ),
+        subtitle: Text(type, style: TextStyle(color: kAccentPurple)),
 
-        trailing: Icon(
-          Icons.play_circle_fill,
-          color: kAccentPurple,
-          size: 30,
-        ),
+        trailing: Icon(Icons.play_circle_fill, color: kAccentPurple, size: 30),
 
         onTap: () => _navigateToPlayer(item),
       ),
@@ -357,3 +331,4 @@ class _EntertainmentScreenState extends State<EntertainmentScreen>
     super.dispose();
   }
 }
+
