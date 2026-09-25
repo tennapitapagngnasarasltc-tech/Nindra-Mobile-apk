@@ -73,20 +73,20 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
       final alreadyRan = prefs.getBool("ai_ran") ?? false;
 
       if (alreadyRan) {
-        print("AI already executed");
+        debugPrint("AI already executed");
 
         return;
       }
 
-      print("Running AI Engine...");
+      debugPrint("Running AI Engine...");
 
       await ApiService.runAI();
 
       await prefs.setBool("ai_ran", true);
 
-      print("AI completed successfully");
+      debugPrint("AI completed successfully");
     } catch (e) {
-      print("AI ERROR: $e");
+      debugPrint("AI ERROR: $e");
     }
   }
 
@@ -135,18 +135,18 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
 
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E30).withOpacity(0.95),
+          color: const Color(0xFF1E1E30).withValues(alpha: 0.95),
 
           borderRadius: BorderRadius.circular(25),
 
           border: Border.all(
-            color: const Color(0xFFB06EF3).withOpacity(0.3),
+            color: const Color(0xFFB06EF3).withValues(alpha: 0.3),
             width: 0.8,
           ),
 
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -212,8 +212,8 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
 }
 
 class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
+  final FaIconData icon;
+  final FaIconData activeIcon;
   final String label;
 
   const _NavItem({
@@ -222,3 +222,4 @@ class _NavItem {
     required this.label,
   });
 }
+
